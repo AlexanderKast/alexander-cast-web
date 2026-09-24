@@ -1,0 +1,354 @@
+/*
+ * IA Master Tech design system.
+ *
+ * Single source of truth for the public site's tokens and effects.
+ * Tokens are scoped to `[data-theme="imt"]` (set by app/(public)/layout.tsx) so the admin panel (which still uses the
+ * shadcn tokens from globals.css, including --border) is not affected.
+ *
+ * Rule: never stack translucent gradients on top of other gradients (it
+ * produces color banding on some renderers). Gradients here are either
+ * built from solid colors or are the only translucent layer on a solid
+ * background.
+ */
+
+@theme inline {
+  --color-imt-bg: var(--bg);
+  --color-imt-elev: var(--bg-elev);
+  --color-imt-surface: var(--surface);
+  --color-imt-border: var(--border);
+  --color-imt-border-solid: var(--border-solid);
+  --color-imt-cyan: var(--cyan);
+  --color-imt-cyan-strong: var(--cyan-strong);
+  --color-imt-glow: var(--glow);
+  --color-imt-text: var(--text);
+  --color-imt-muted: var(--text-muted);
+  --color-imt-dim: var(--text-dim);
+
+  --font-imt-display: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-imt-body: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-imt-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+
+  --radius-imt-sm: 12px;
+  --radius-imt: 16px;
+  --radius-imt-lg: 24px;
+}
+
+@property --imt-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@layer base {
+  [data-theme="imt"] {
+    --bg: #05080d;
+    --bg-elev: #0a111b;
+    --surface: #0d1622;
+    --border: rgba(56, 189, 248, 0.14);
+    /* --border flattened over --surface, for gradients that must stay opaque. */
+    --border-solid: #132d40;
+    --cyan: #22d3ee;
+    --cyan-strong: #0ea5e9;
+    --glow: #38bdf8;
+    --text: #f1f5f9;
+    --text-muted: #94a3b8;
+    /* 4.1:1 on --bg: only for large or decorative text, never body copy. */
+    --text-dim: #64748b;
+
+    color: var(--text);
+    font-family: var(--font-imt-body);
+    font-feature-settings: normal;
+  }
+
+  [data-theme="imt"].imt-page {
+    background-color: var(--bg);
+    min-height: 100vh;
+    overflow-x: clip;
+  }
+
+  html:has([data-theme="imt"]),
+  body:has([data-theme="imt"]) {
+    background: #05080d;
+    overflow-x: clip;
+  }
+
+  html:has([data-theme="imt"]) {
+    scroll-padding-top: 88px;
+  }
+
+  [data-theme="imt"] :is(h1, h2, h3, h4) {
+    font-family: var(--font-imt-display);
+    color: var(--text);
+    letter-spacing: -0.02em;
+  }
+
+  [data-theme="imt"] ::selection {
+    background: var(--cyan);
+    color: var(--bg);
+  }
+
+  [data-theme="imt"] :focus-visible {
+    outline: 2px solid var(--cyan);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+}
+
+@layer components {
+  /* ── Eyebrow ─────────────────────────────────────────── */
+  .imt-eyebrow {
+    font-family: var(--font-imt-mono);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.4;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--cyan);
+  }
+
+  /* ── Buttons ─────────────────────────────────────────── */
+  .imt-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 48px;
+    padding: 0 1.5rem;
+    border-radius: 999px;
+    font-family: var(--font-imt-body);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    transition:
+      transform 180ms ease,
+      background-color 180ms ease,
+      border-color 180ms ease,
+      color 180ms ease,
+      box-shadow 180ms ease;
+  }
+  .imt-btn:active {
+    transform: translateY(1px);
+  }
+  .imt-btn[aria-disabled="true"],
+  .imt-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
+  }
+  .imt-btn-primary {
+    background-color: var(--cyan);
+    color: var(--bg);
+    box-shadow: 0 0 0 1px var(--cyan), 0 10px 32px -10px rgba(34, 211, 238, 0.7);
+  }
+  .imt-btn-primary:hover:not(:disabled) {
+    background-color: #67e8f9;
+    box-shadow: 0 0 0 1px #67e8f9, 0 14px 40px -10px rgba(34, 211, 238, 0.85);
+  }
+  .imt-btn-secondary {
+    background-color: var(--bg-elev);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .imt-btn-secondary:hover:not(:disabled) {
+    border-color: var(--cyan);
+    color: #ffffff;
+  }
+  .imt-btn-sm {
+    min-height: 40px;
+    padding: 0 1.1rem;
+    font-size: 14px;
+  }
+  .imt-btn-lg {
+    min-height: 56px;
+    padding: 0 2rem;
+    font-size: 16px;
+  }
+
+  /* ── Card ────────────────────────────────────────────── */
+  .imt-card {
+    position: relative;
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-imt-lg);
+  }
+
+  /* ── Glow border (rotating conic on hover, always on when active) ── */
+  .imt-glow-border {
+    position: relative;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-imt-lg);
+    background-color: var(--surface);
+    transition: border-color 200ms ease;
+  }
+  .imt-glow-border:hover,
+  .imt-glow-border[data-active="true"] {
+    border-color: transparent;
+    /* Two opaque layers: solid fill + conic built only from solid colors. */
+    background:
+      linear-gradient(var(--surface), var(--surface)) padding-box,
+      conic-gradient(
+          from var(--imt-angle),
+          var(--border-solid) 0deg,
+          var(--cyan-strong) 50deg,
+          var(--cyan) 90deg,
+          var(--border-solid) 150deg,
+          var(--border-solid) 360deg
+        )
+        border-box;
+    animation: imt-spin 4.5s linear infinite;
+  }
+  .imt-glow-border[data-active="true"] {
+    box-shadow: 0 24px 80px -32px rgba(34, 211, 238, 0.55);
+  }
+
+  /* ── Grain overlay ───────────────────────────────────── */
+  .imt-grain {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    pointer-events: none;
+    opacity: 0.05;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* ── Hero title: per-letter reveal ───────────────────── */
+  .imt-letter {
+    display: inline-block;
+    opacity: 0;
+    transform: translateY(0.35em);
+    animation: imt-letter-in 600ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation-delay: calc(var(--i, 0) * 45ms + 120ms);
+  }
+  .imt-text-glow {
+    color: var(--cyan);
+    text-shadow: 0 0 28px rgba(34, 211, 238, 0.55);
+  }
+
+  /* ── Scroll reveal (only armed when JS is running) ───── */
+  .imt-js [data-reveal] {
+    opacity: 0;
+    transform: translateY(16px);
+    transition:
+      opacity 600ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 600ms cubic-bezier(0.16, 1, 0.3, 1);
+    transition-delay: var(--reveal-delay, 0ms);
+  }
+  .imt-js [data-reveal][data-revealed="true"] {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* ── Marquee ─────────────────────────────────────────── */
+  .imt-marquee {
+    display: flex;
+    overflow: hidden;
+    mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  }
+  .imt-marquee-track {
+    display: flex;
+    flex-shrink: 0;
+    min-width: 100%;
+    animation: imt-marquee 38s linear infinite;
+  }
+
+  /* ── Circuit pulses ──────────────────────────────────── */
+  .imt-pulse {
+    stroke-dasharray: 60 940;
+    stroke-dashoffset: 1000;
+    animation: imt-pulse var(--dur, 7s) linear infinite;
+    animation-delay: var(--delay, 0s);
+  }
+  [data-paused="true"] .imt-pulse,
+  [data-paused="true"] .imt-caret {
+    animation-play-state: paused;
+  }
+
+  .imt-caret {
+    animation: imt-blink 1s steps(1) infinite;
+  }
+
+  /* ── Accordion (grid rows: no max-height clipping) ───── */
+  .imt-collapse {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 260ms ease;
+  }
+  .imt-collapse[data-open="true"] {
+    grid-template-rows: 1fr;
+  }
+  .imt-collapse > * {
+    overflow: hidden;
+  }
+}
+
+@keyframes imt-spin {
+  to {
+    --imt-angle: 360deg;
+  }
+}
+@keyframes imt-letter-in {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes imt-marquee {
+  to {
+    transform: translateX(-100%);
+  }
+}
+@keyframes imt-pulse {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes imt-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .imt-letter {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+  .imt-js [data-reveal] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .imt-glow-border:hover,
+  .imt-glow-border[data-active="true"] {
+    animation: none;
+    --imt-angle: 120deg;
+  }
+  .imt-marquee-track {
+    animation: none;
+  }
+  .imt-marquee-track[aria-hidden="true"] {
+    display: none;
+  }
+  .imt-marquee {
+    mask-image: none;
+  }
+  .imt-marquee-track:first-child {
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 0.75rem;
+  }
+  .imt-pulse {
+    display: none;
+  }
+  .imt-caret {
+    animation: none;
+  }
+  .imt-collapse {
+    transition: none;
+  }
+  .imt-btn {
+    transition: none;
+  }
+}

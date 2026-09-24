@@ -1,5 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { DM_Sans, Fraunces, Bebas_Neue } from "next/font/google";
+import {
+  DM_Sans,
+  Fraunces,
+  Bebas_Neue,
+  Space_Grotesk,
+  Inter,
+  JetBrains_Mono,
+} from "next/font/google";
 import { site } from "@/content/site";
 import "./globals.css";
 
@@ -31,6 +38,28 @@ const bebas = Bebas_Neue({
   variable: "--font-bebas",
   display: "swap",
   weight: ["400"],
+});
+
+/* IA Master Tech (public site, scoped by data-theme="imt"): display, body
+   and technical labels. Admin, portal and brief keep the fonts above. */
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  weight: ["500", "700"],
+  variable: "--font-space-grotesk",
+  display: "swap",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-jetbrains-mono",
+  display: "swap",
 });
 
 export const viewport: Viewport = {
@@ -85,7 +114,7 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`${dmSans.variable} ${fraunces.variable} ${bebas.variable} dark`}
+      className={`${dmSans.variable} ${fraunces.variable} ${bebas.variable} ${spaceGrotesk.variable} ${inter.variable} ${jetbrainsMono.variable} dark`}
     >
       <body className="min-h-screen antialiased">
         {children}
