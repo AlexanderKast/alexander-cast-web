@@ -7,6 +7,7 @@ import { Menu, X } from "lucide-react";
 import { NAV_ITEMS } from "@/content/imt";
 import { cn } from "@/lib/utils";
 import { buttonClasses } from "@/components/imt/ui/Button";
+import { diagnosticoWhatsappUrl } from "@/site.config";
 import { BrandMark } from "./BrandMark";
 
 export function SiteHeader() {
@@ -47,7 +48,7 @@ export function SiteHeader() {
         scrolled || open ? "border-imt-border bg-imt-bg/85 backdrop-blur-md" : "border-transparent",
       )}
     >
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         <BrandMark />
 
         <nav aria-label="Principal" className="hidden md:block">
@@ -56,7 +57,8 @@ export function SiteHeader() {
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  className="rounded-full px-4 py-2 text-sm font-medium text-imt-muted transition-colors hover:text-imt-text"
+                  aria-current={pathname === item.href ? "page" : undefined}
+                  className="rounded-full px-4 py-2 text-sm font-medium text-imt-muted transition-colors hover:text-imt-text aria-[current=page]:bg-imt-surface aria-[current=page]:text-imt-accent"
                 >
                   {item.label}
                 </Link>
@@ -66,13 +68,18 @@ export function SiteHeader() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <Link href="/diagnostico" className={buttonClasses("primary", "sm", "hidden sm:inline-flex")}>
+          <a
+            href={diagnosticoWhatsappUrl()}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={buttonClasses("primary", "sm", "hidden sm:inline-flex")}
+          >
             Agenda tu diagnóstico
-          </Link>
+          </a>
           <button
             ref={toggleRef}
             type="button"
-            className="inline-flex size-11 items-center justify-center rounded-full border border-imt-border text-imt-text transition-colors hover:border-imt-cyan md:hidden"
+            className="inline-flex size-11 items-center justify-center rounded-full border border-imt-border text-imt-text transition-colors hover:border-imt-accent md:hidden"
             aria-expanded={open}
             aria-controls={menuId}
             aria-label={open ? "Cerrar menú" : "Abrir menú"}
@@ -91,20 +98,22 @@ export function SiteHeader() {
                 <Link
                   href={item.href}
                   onClick={() => setOpen(false)}
-                  className="block rounded-lg px-2 py-3.5 font-imt-display text-lg font-medium text-imt-text transition-colors hover:text-imt-cyan"
+                  className="block rounded-lg px-2 py-3.5 font-imt-display text-lg font-medium text-imt-text transition-colors hover:text-imt-accent"
                 >
                   {item.label}
                 </Link>
               </li>
             ))}
           </ul>
-          <Link
-            href="/diagnostico"
+          <a
+            href={diagnosticoWhatsappUrl()}
+            target="_blank"
+            rel="noopener noreferrer"
             onClick={() => setOpen(false)}
             className={buttonClasses("primary", "md", "mt-4 w-full")}
           >
             Agenda tu diagnóstico
-          </Link>
+          </a>
         </nav>
       </div>
     </header>

@@ -9,6 +9,8 @@ export const metadata: Metadata = buildMetadata({
   description:
     "Cuéntanos cómo opera tu empresa hoy. Te escribimos en menos de 24 horas hábiles para agendar el diagnóstico con IA Master Tech.",
   path: "/diagnostico",
+  // Reachable by direct URL only: not linked, not indexed.
+  noindex: true,
 });
 
 const NEXT_STEPS = [
@@ -35,7 +37,7 @@ export default function DiagnosticoPage() {
           <ol className="mt-10 space-y-6">
             {NEXT_STEPS.map((step, i) => (
               <li key={step.title} className="flex gap-4">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-imt-cyan font-imt-mono text-sm text-imt-cyan">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-imt-accent font-imt-mono text-sm text-imt-accent">
                   {i + 1}
                 </span>
                 <div>

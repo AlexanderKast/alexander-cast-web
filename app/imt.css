@@ -17,8 +17,8 @@
   --color-imt-surface: var(--surface);
   --color-imt-border: var(--border);
   --color-imt-border-solid: var(--border-solid);
-  --color-imt-cyan: var(--cyan);
-  --color-imt-cyan-strong: var(--cyan-strong);
+  --color-imt-accent: var(--accent);
+  --color-imt-accent-strong: var(--accent-strong);
   --color-imt-glow: var(--glow);
   --color-imt-text: var(--text);
   --color-imt-muted: var(--text-muted);
@@ -41,19 +41,19 @@
 
 @layer base {
   [data-theme="imt"] {
-    --bg: #05080d;
-    --bg-elev: #0a111b;
-    --surface: #0d1622;
-    --border: rgba(56, 189, 248, 0.14);
+    --bg: #050705;
+    --bg-elev: #0a0f0a;
+    --surface: #0e140d;
+    --border: rgba(163,230,53, 0.14);
     /* --border flattened over --surface, for gradients that must stay opaque. */
-    --border-solid: #132d40;
-    --cyan: #22d3ee;
-    --cyan-strong: #0ea5e9;
-    --glow: #38bdf8;
-    --text: #f1f5f9;
-    --text-muted: #94a3b8;
+    --border-solid: #223013;
+    --accent: #A3E635;
+    --accent-strong: #22C55E;
+    --glow: #BEF264;
+    --text: #F7FEE7;
+    --text-muted: #A8B39F;
     /* 4.1:1 on --bg: only for large or decorative text, never body copy. */
-    --text-dim: #64748b;
+    --text-dim: #6F7A66;
 
     color: var(--text);
     font-family: var(--font-imt-body);
@@ -68,7 +68,7 @@
 
   html:has([data-theme="imt"]),
   body:has([data-theme="imt"]) {
-    background: #05080d;
+    background: #050705;
     overflow-x: clip;
   }
 
@@ -83,12 +83,12 @@
   }
 
   [data-theme="imt"] ::selection {
-    background: var(--cyan);
+    background: var(--accent);
     color: var(--bg);
   }
 
   [data-theme="imt"] :focus-visible {
-    outline: 2px solid var(--cyan);
+    outline: 2px solid var(--accent);
     outline-offset: 3px;
     border-radius: 6px;
   }
@@ -103,7 +103,7 @@
     line-height: 1.4;
     letter-spacing: 0.22em;
     text-transform: uppercase;
-    color: var(--cyan);
+    color: var(--accent);
   }
 
   /* ── Buttons ─────────────────────────────────────────── */
@@ -137,13 +137,13 @@
     transform: none;
   }
   .imt-btn-primary {
-    background-color: var(--cyan);
+    background-color: var(--accent);
     color: var(--bg);
-    box-shadow: 0 0 0 1px var(--cyan), 0 10px 32px -10px rgba(34, 211, 238, 0.7);
+    box-shadow: 0 0 0 1px var(--accent), 0 10px 32px -10px rgba(163,230,53, 0.7);
   }
   .imt-btn-primary:hover:not(:disabled) {
-    background-color: #67e8f9;
-    box-shadow: 0 0 0 1px #67e8f9, 0 14px 40px -10px rgba(34, 211, 238, 0.85);
+    background-color: #BEF264;
+    box-shadow: 0 0 0 1px #BEF264, 0 14px 40px -10px rgba(163,230,53, 0.85);
   }
   .imt-btn-secondary {
     background-color: var(--bg-elev);
@@ -151,7 +151,7 @@
     border: 1px solid var(--border);
   }
   .imt-btn-secondary:hover:not(:disabled) {
-    border-color: var(--cyan);
+    border-color: var(--accent);
     color: #ffffff;
   }
   .imt-btn-sm {
@@ -190,8 +190,8 @@
       conic-gradient(
           from var(--imt-angle),
           var(--border-solid) 0deg,
-          var(--cyan-strong) 50deg,
-          var(--cyan) 90deg,
+          var(--accent-strong) 50deg,
+          var(--accent) 90deg,
           var(--border-solid) 150deg,
           var(--border-solid) 360deg
         )
@@ -199,7 +199,7 @@
     animation: imt-spin 4.5s linear infinite;
   }
   .imt-glow-border[data-active="true"] {
-    box-shadow: 0 24px 80px -32px rgba(34, 211, 238, 0.55);
+    box-shadow: 0 24px 80px -32px rgba(163,230,53, 0.55);
   }
 
   /* ── Grain overlay ───────────────────────────────────── */
@@ -221,8 +221,8 @@
     animation-delay: calc(var(--i, 0) * 45ms + 120ms);
   }
   .imt-text-glow {
-    color: var(--cyan);
-    text-shadow: 0 0 28px rgba(34, 211, 238, 0.55);
+    color: var(--accent);
+    text-shadow: 0 0 28px rgba(163,230,53, 0.55);
   }
 
   /* ── Scroll reveal (only armed when JS is running) ───── */

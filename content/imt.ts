@@ -4,9 +4,9 @@
  */
 
 export const NAV_ITEMS = [
-  { label: "Cómo trabajamos", href: "/#como-trabajamos" },
-  { label: "Planes", href: "/#planes" },
-  { label: "Equipo", href: "/#equipo" },
+  { label: "Cómo trabajamos", href: "/como-trabajamos" },
+  { label: "Planes", href: "/planes" },
+  { label: "Equipo", href: "/nosotros" },
 ] as const;
 
 export const CATEGORIES = [
@@ -28,19 +28,25 @@ export const PROBLEMS: { icon: ProblemIcon; text: string }[] = [
 
 export type StepIcon = "diagnose" | "build" | "operate";
 
-export const STEPS: { icon: StepIcon; title: string; text: string }[] = [
+export const STEPS: { icon: StepIcon; title: string; text: string; image: string; alt: string }[] = [
   {
     icon: "diagnose",
+    image: "/images/imt/diagnosticamos.webp",
+    alt: "Lupa de luz analizando un diagrama de procesos con un cuello de botella resaltado",
     title: "Diagnosticamos",
     text: "Mapeamos tus procesos y cuellos de botella, y priorizamos por impacto.",
   },
   {
     icon: "build",
+    image: "/images/imt/construimos.webp",
+    alt: "Brazo robótico ensamblando módulos de software conectados por líneas de datos",
     title: "Construimos",
     text: "Automatizaciones, integraciones y software a la medida, con un sprint semanal que ves funcionando.",
   },
   {
     icon: "operate",
+    image: "/images/imt/operamos.webp",
+    alt: "Tablero de monitoreo con gráficas en vivo sobre engranajes en movimiento",
     title: "Operamos",
     text: "Monitoreamos, mantenemos y mejoramos lo construido. Nada se abandona.",
   },

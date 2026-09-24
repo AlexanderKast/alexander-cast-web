@@ -49,13 +49,13 @@ export function FaqAccordion({ items }: { items: readonly Item[] }) {
                 aria-controls={panelId}
                 onClick={() => setOpen(isOpen ? null : i)}
                 onKeyDown={(e) => onKeyDown(e, i)}
-                className="flex w-full items-center justify-between gap-6 py-6 text-left font-imt-display text-lg font-medium text-imt-text transition-colors hover:text-imt-cyan sm:text-xl"
+                className="flex w-full items-center justify-between gap-6 py-6 text-left font-imt-display text-lg font-medium text-imt-text transition-colors hover:text-imt-accent sm:text-xl"
               >
                 {item.question}
                 <span
                   className={cn(
-                    "inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-imt-border text-imt-cyan transition-transform duration-200 motion-reduce:transition-none",
-                    isOpen && "rotate-45 border-imt-cyan",
+                    "inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-imt-border text-imt-accent transition-transform duration-200 motion-reduce:transition-none",
+                    isOpen && "rotate-45 border-imt-accent",
                   )}
                   aria-hidden="true"
                 >

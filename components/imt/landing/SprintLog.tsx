@@ -67,12 +67,12 @@ export function SprintLog() {
   }, []);
 
   return (
-    <div ref={ref} className="imt-card overflow-hidden shadow-[0_30px_90px_-40px_rgba(34,211,238,0.5)]">
+    <div ref={ref} className="imt-card overflow-hidden shadow-[0_30px_90px_-40px_rgba(163,230,53,0.5)]">
       <div className="flex items-center justify-between border-b border-imt-border px-5 py-3">
         <div className="flex items-center gap-2" aria-hidden="true">
-          <span className="size-2.5 rounded-full bg-[#1e4a66]" />
-          <span className="size-2.5 rounded-full bg-[#1e4a66]" />
-          <span className="size-2.5 rounded-full bg-imt-cyan" />
+          <span className="size-2.5 rounded-full bg-[#3a5a1f]" />
+          <span className="size-2.5 rounded-full bg-[#3a5a1f]" />
+          <span className="size-2.5 rounded-full bg-imt-accent" />
         </div>
         <span className="font-imt-mono text-xs text-imt-muted">sprints.log</span>
         <span className="rounded-full border border-imt-border px-2.5 py-1 font-imt-mono text-[10px] uppercase tracking-[0.14em] text-imt-muted">
@@ -101,7 +101,7 @@ export function SprintLog() {
               <span
                 className={cn(
                   "col-start-2 sm:col-start-auto",
-                  state === "running" ? "text-imt-muted" : "text-imt-cyan",
+                  state === "running" ? "text-imt-muted" : "text-imt-accent",
                 )}
               >
                 {state === "running" ? "▸ en construcción" : `✓ ${entry.status}`}
@@ -110,8 +110,8 @@ export function SprintLog() {
           );
         })}
         <li className="flex items-center gap-2 px-2 pt-3 text-imt-muted">
-          <span className="text-imt-cyan">$</span> próxima entrega: viernes
-          <span className="imt-caret inline-block h-4 w-2 bg-imt-cyan" />
+          <span className="text-imt-accent">$</span> próxima entrega: viernes
+          <span className="imt-caret inline-block h-4 w-2 bg-imt-accent" />
         </li>
       </ol>
     </div>

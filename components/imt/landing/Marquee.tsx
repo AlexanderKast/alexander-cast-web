@@ -8,7 +8,7 @@ function Track({ hidden }: { hidden?: boolean }) {
           key={category}
           className="mx-3 flex shrink-0 items-center gap-3 font-imt-mono text-sm uppercase tracking-[0.14em] text-imt-muted"
         >
-          <span aria-hidden="true" className="size-1.5 rounded-full bg-imt-cyan" />
+          <span aria-hidden="true" className="size-1.5 rounded-full bg-imt-accent" />
           {category}
         </li>
       ))}

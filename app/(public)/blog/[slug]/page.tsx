@@ -60,7 +60,7 @@ export default async function BlogPostPage({
             })}
           </time>
           <span aria-hidden>·</span>
-          <span className="text-imt-cyan">{post.pilar}</span>
+          <span className="text-imt-accent">{post.pilar}</span>
           <span aria-hidden>·</span>
           <span>{post.readingMinutes} min</span>
         </div>
@@ -70,7 +70,7 @@ export default async function BlogPostPage({
         <p className="text-pretty text-lg text-imt-muted">{post.excerpt}</p>
       </header>
 
-      <div className="prose prose-invert mt-12 max-w-none prose-headings:font-imt-display prose-a:text-imt-cyan prose-p:text-imt-muted prose-li:text-imt-muted">
+      <div className="prose prose-invert mt-12 max-w-none prose-headings:font-imt-display prose-a:text-imt-accent prose-p:text-imt-muted prose-li:text-imt-muted">
         <MDXRemote
           source={post.content}
           options={{

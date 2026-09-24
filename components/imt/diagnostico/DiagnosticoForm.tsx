@@ -46,7 +46,7 @@ const FIELD_ORDER: (keyof FieldErrors)[] = [
 ];
 
 const inputClass =
-  "h-12 w-full rounded-xl border border-imt-border bg-imt-bg px-4 text-base text-imt-text transition-colors placeholder:text-imt-dim hover:border-imt-border-solid focus-visible:border-imt-cyan aria-[invalid=true]:border-red-300";
+  "h-12 w-full rounded-xl border border-imt-border bg-imt-bg px-4 text-base text-imt-text transition-colors placeholder:text-imt-dim hover:border-imt-border-solid focus-visible:border-imt-accent aria-[invalid=true]:border-red-300";
 
 function Field({
   id,
@@ -70,7 +70,7 @@ function Field({
       <label htmlFor={id} className="text-sm font-medium text-imt-text">
         {label}
         {required ? (
-          <span className="text-imt-cyan" aria-hidden="true">
+          <span className="text-imt-accent" aria-hidden="true">
             {" "}
             *
           </span>
@@ -144,7 +144,7 @@ function SuccessView({ empresa, plan, calLink }: { empresa: string; plan: PlanId
 
   return (
     <div className="imt-card p-6 sm:p-10" role="status">
-      <CircleCheck className="size-10 text-imt-cyan" aria-hidden />
+      <CircleCheck className="size-10 text-imt-accent" aria-hidden />
       <h2 ref={headingRef} tabIndex={-1} className="mt-5 text-3xl font-bold outline-none sm:text-4xl">
         Recibimos tu diagnóstico.
       </h2>
@@ -155,7 +155,7 @@ function SuccessView({ empresa, plan, calLink }: { empresa: string; plan: PlanId
           <h3 className="text-xl font-bold">¿Quieres adelantar? Reserva la llamada de 30 minutos</h3>
           <p className="mt-2 text-sm text-imt-muted">Elige el horario que te sirva. Llegamos con tu formulario leído.</p>
           <div className="mt-6">
-            <CalEmbed calLink={calLink} namespace="diagnostico" brandColor="#22D3EE" />
+            <CalEmbed calLink={calLink} namespace="diagnostico" brandColor="#A3E635" />
           </div>
         </div>
       ) : null}
@@ -222,7 +222,7 @@ export function DiagnosticoForm({ calLink }: { calLink?: string }) {
   return (
     <form ref={formRef} onSubmit={onSubmit} noValidate className="imt-card p-6 sm:p-8" aria-describedby={id("required-note")}>
       <p id={id("required-note")} className="text-sm text-imt-muted">
-        Los campos con <span className="text-imt-cyan">*</span> son obligatorios. Toma unos 3 minutos.
+        Los campos con <span className="text-imt-accent">*</span> son obligatorios. Toma unos 3 minutos.
       </p>
 
       {state.status === "error" && !state.fieldErrors ? (
@@ -291,13 +291,13 @@ export function DiagnosticoForm({ calLink }: { calLink?: string }) {
             {HERRAMIENTAS_OPTIONS.map((tool) => (
               <label
                 key={tool.value}
-                className="flex min-h-11 cursor-pointer items-center gap-2 rounded-full border border-imt-border bg-imt-bg px-4 text-sm text-imt-text transition-colors hover:border-imt-border-solid has-[:checked]:border-imt-cyan has-[:checked]:text-imt-cyan has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-imt-cyan"
+                className="flex min-h-11 cursor-pointer items-center gap-2 rounded-full border border-imt-border bg-imt-bg px-4 text-sm text-imt-text transition-colors hover:border-imt-border-solid has-[:checked]:border-imt-accent has-[:checked]:text-imt-accent has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-imt-accent"
               >
                 <input
                   type="checkbox"
                   name="herramientas"
                   value={tool.value}
-                  className="size-4 accent-[#22d3ee]"
+                  className="size-4 accent-[#A3E635]"
                   onChange={tool.value === "otras" ? (e) => setOtrasChecked(e.target.checked) : undefined}
                 />
                 {tool.label}
@@ -326,15 +326,15 @@ export function DiagnosticoForm({ calLink }: { calLink?: string }) {
             required
             aria-invalid={errors.consentimiento ? true : undefined}
             aria-describedby={describedBy("consentimiento")}
-            className="mt-1 size-4 shrink-0 accent-[#22d3ee]"
+            className="mt-1 size-4 shrink-0 accent-[#A3E635]"
           />
           <span>
             Autorizo a Alexander Cast · IA Master Tech a tratar mis datos personales para responder esta solicitud,
             conforme a la Ley 1581 de 2012 y a la{" "}
-            <Link href="/legal/privacidad" target="_blank" className="text-imt-cyan underline underline-offset-4 hover:text-imt-text">
+            <Link href="/legal/privacidad" target="_blank" className="text-imt-accent underline underline-offset-4 hover:text-imt-text">
               política de privacidad
             </Link>
-            . <span className="text-imt-cyan" aria-hidden="true">*</span>
+            . <span className="text-imt-accent" aria-hidden="true">*</span>
           </span>
         </label>
         {errors.consentimiento ? (

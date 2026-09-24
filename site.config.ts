@@ -15,3 +15,12 @@ export const WHATSAPP_NUMBER = "573132947776";
 export function whatsappUrl(message: string): string {
   return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
 }
+
+/** Prefilled WhatsApp link for the "Agenda tu diagnóstico" CTAs. */
+export function diagnosticoWhatsappUrl(planName?: string): string {
+  return whatsappUrl(
+    planName
+      ? `Hola Alexander, quiero agendar el diagnóstico de IA Master Tech. Me interesa el plan ${planName}.`
+      : "Hola Alexander, quiero agendar el diagnóstico de IA Master Tech.",
+  );
+}

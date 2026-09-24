@@ -30,7 +30,7 @@ export default async function BlogIndexPage() {
             <li key={post.slug}>
               <Link
                 href={`/blog/${post.slug}`}
-                className="group block rounded-3xl border border-imt-border bg-imt-surface p-6 transition-colors hover:border-imt-cyan"
+                className="group block rounded-3xl border border-imt-border bg-imt-surface p-6 transition-colors hover:border-imt-accent"
               >
                 <div className="flex flex-wrap items-center gap-3 font-imt-mono text-xs uppercase tracking-[0.14em] text-imt-muted">
                   <time dateTime={post.date}>
@@ -41,13 +41,13 @@ export default async function BlogIndexPage() {
                     })}
                   </time>
                   <span aria-hidden>·</span>
-                  <span className="text-imt-cyan">{post.pilar}</span>
+                  <span className="text-imt-accent">{post.pilar}</span>
                   <span aria-hidden>·</span>
                   <span>{post.readingMinutes} min</span>
                 </div>
-                <h2 className="mt-3 text-2xl font-bold transition-colors group-hover:text-imt-cyan">{post.title}</h2>
+                <h2 className="mt-3 text-2xl font-bold transition-colors group-hover:text-imt-accent">{post.title}</h2>
                 <p className="mt-2 text-pretty text-imt-muted">{post.excerpt}</p>
-                <span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-imt-cyan">
+                <span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-imt-accent">
                   Leer
                   <ArrowRight className="size-4" aria-hidden />
                 </span>

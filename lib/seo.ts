@@ -137,7 +137,7 @@ export function buildServiceSchema(): Record<string, unknown> {
         "@type": "Offer",
         name: plan.name,
         description: `${plan.description} ${plan.hours} · ${plan.projects}.`,
-        url: new URL(`/diagnostico?plan=${plan.id}`, site.url).toString(),
+        url: new URL(`/planes#${plan.id}`, site.url).toString(),
         priceSpecification: {
           "@type": "UnitPriceSpecification",
           minPrice: plan.priceCop,

@@ -50,8 +50,8 @@ const nextConfig: NextConfig = {
        * IA Master Tech: the consulting pages are retired. 301 (not Next's
        * default 308 for `permanent`) as requested for SEO continuity.
        */
-      { source: "/servicios", destination: "/#planes", statusCode: 301 },
-      { source: "/consultoria", destination: "/#planes", statusCode: 301 },
+      { source: "/servicios", destination: "/planes", statusCode: 301 },
+      { source: "/consultoria", destination: "/planes", statusCode: 301 },
       { source: "/sobre-mi", destination: "/nosotros", statusCode: 301 },
       { source: "/contacto", destination: "/diagnostico", statusCode: 301 },
       { source: "/podcast", destination: "/", statusCode: 301 },

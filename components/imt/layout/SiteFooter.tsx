@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { site } from "@/content/site";
+import { NAV_ITEMS } from "@/content/imt";
+import { diagnosticoWhatsappUrl } from "@/site.config";
 import { BrandMark } from "./BrandMark";
 
 function InstagramIcon() {
@@ -32,7 +34,7 @@ const LEGAL = [
 
 export function SiteFooter() {
   return (
-    <footer className="relative border-t border-imt-border bg-imt-bg">
+    <footer className="relative z-10 border-t border-imt-border bg-imt-bg">
       <div className="mx-auto grid w-full max-w-6xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-[1.4fr_1fr] lg:px-8">
         <div>
           <BrandMark />
@@ -47,7 +49,7 @@ export function SiteFooter() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={label}
-                  className="inline-flex size-11 items-center justify-center rounded-full border border-imt-border text-imt-muted transition-colors hover:border-imt-cyan hover:text-imt-cyan"
+                  className="inline-flex size-11 items-center justify-center rounded-full border border-imt-border text-imt-muted transition-colors hover:border-imt-accent hover:text-imt-accent"
                 >
                   <Icon />
                 </a>
@@ -56,13 +58,20 @@ export function SiteFooter() {
           </ul>
         </div>
 
-        <nav aria-label="Legal y contacto" className="flex flex-col gap-3 text-sm md:items-end">
-          <Link href="/diagnostico" className="font-medium text-imt-cyan transition-colors hover:text-imt-text">
+        <nav aria-label="Secciones y legal" className="flex flex-col gap-3 text-sm md:items-end">
+          <a
+            href={diagnosticoWhatsappUrl()}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-imt-accent transition-colors hover:text-imt-text"
+          >
             Agenda tu diagnóstico
-          </Link>
-          <Link href="/nosotros" className="text-imt-muted transition-colors hover:text-imt-text">
-            Nosotros
-          </Link>
+          </a>
+          {NAV_ITEMS.map((item) => (
+            <Link key={item.href} href={item.href} className="text-imt-muted transition-colors hover:text-imt-text">
+              {item.label}
+            </Link>
+          ))}
           {LEGAL.map((item) => (
             <Link key={item.href} href={item.href} className="text-imt-muted transition-colors hover:text-imt-text">
               {item.label}

@@ -6,11 +6,11 @@ export const alt = "IA Master Tech — OPERAR vs. ESCALAR";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-const BG = "#05080D";
-const LINE = "#10263A";
-const CYAN = "#22D3EE";
-const TEXT = "#F1F5F9";
-const MUTED = "#94A3B8";
+const BG = "#050705";
+const LINE = "#1a2614";
+const ACCENT = "#A3E635";
+const TEXT = "#F7FEE7";
+const MUTED = "#A8B39F";
 
 // Circuit traces drawn as solid 2px bars (no stacked translucent gradients).
 const TRACES: { left: number; top: number; width: number; height: number }[] = [
@@ -60,7 +60,7 @@ export default function OpengraphImage() {
               width: 12,
               height: 12,
               borderRadius: 6,
-              backgroundColor: CYAN,
+              backgroundColor: ACCENT,
             }}
           />
         ))}
@@ -73,7 +73,7 @@ export default function OpengraphImage() {
             width: "100%",
             height: "100%",
             display: "flex",
-            backgroundImage: "radial-gradient(circle at 78% 40%, rgba(34,211,238,0.22), rgba(5,8,13,0) 55%)",
+            backgroundImage: "radial-gradient(circle at 78% 40%, rgba(163,230,53,0.22), rgba(5,7,5,0) 55%)",
           }}
         />
 
@@ -88,7 +88,7 @@ export default function OpengraphImage() {
             padding: "72px 80px",
           }}
         >
-          <div style={{ display: "flex", fontSize: 22, letterSpacing: 6, color: CYAN }}>
+          <div style={{ display: "flex", fontSize: 22, letterSpacing: 6, color: ACCENT }}>
             ALEXANDER CAST PRESENTA · IA MASTER TECH
           </div>
 
@@ -96,7 +96,7 @@ export default function OpengraphImage() {
             <div style={{ display: "flex", alignItems: "baseline", fontSize: 124, fontWeight: 800, lineHeight: 1, letterSpacing: -4 }}>
               <span style={{ color: TEXT }}>OPERAR</span>
               <span style={{ color: MUTED, fontSize: 64, margin: "0 28px", fontWeight: 600 }}>vs.</span>
-              <span style={{ color: CYAN }}>ESCALAR</span>
+              <span style={{ color: ACCENT }}>ESCALAR</span>
             </div>
             <div style={{ display: "flex", marginTop: 28, fontSize: 32, color: TEXT, maxWidth: 900, lineHeight: 1.3 }}>
               Desarrollo y automatización para empresas que ya venden.

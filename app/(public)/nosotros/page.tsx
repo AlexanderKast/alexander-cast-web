@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { ArrowRight } from "lucide-react";
+import Image from "next/image";
 import { TEAM } from "@/content/imt";
-import { Button } from "@/components/imt/ui/Button";
 import { Card } from "@/components/imt/ui/Card";
 import { Eyebrow } from "@/components/imt/ui/Eyebrow";
-import { Section, SectionHeader } from "@/components/imt/ui/Section";
+import { PageHeader } from "@/components/imt/ui/PageHeader";
 import { TeamAvatar } from "@/components/imt/landing/TeamAvatar";
+import { FinalCta } from "@/components/imt/landing/FinalCta";
 import { JsonLd } from "@/components/shared/json-ld";
 import { buildMetadata, buildOrganizationSchema, buildPeopleSchema } from "@/lib/seo";
 
@@ -48,67 +48,97 @@ export default function NosotrosPage() {
     <>
       <JsonLd schema={[buildOrganizationSchema(), ...buildPeopleSchema()]} />
 
-      <section aria-labelledby="nosotros-title" className="mx-auto w-full max-w-6xl px-4 pb-16 pt-28 sm:px-6 sm:pt-36 lg:px-8">
-        <Eyebrow>Nosotros</Eyebrow>
-        <h1 id="nosotros-title" className="mt-4 max-w-4xl text-balance text-4xl font-bold leading-[1.05] sm:text-6xl">
-          De operar negocios digitales a construir los <span className="imt-text-glow">sistemas que les faltan</span>.
-        </h1>
-        <div className="mt-8 grid max-w-4xl gap-5 text-pretty text-lg leading-relaxed text-imt-muted md:grid-cols-2">
-          <p>
-            Después de años operando negocios digitales vimos el mismo patrón una y otra vez: empresas que ya venden,
-            pero que crecen a punta de tareas manuales, hojas de cálculo y personas que no pueden faltar.
-          </p>
-          <p>
-            IA Master Tech nace para cerrar esa brecha: ser el equipo de desarrollo que esas empresas no tienen, con
-            estrategia y código trabajando juntos y una entrega funcionando cada semana.
+      <PageHeader
+        id="nosotros-title"
+        eyebrow="Nosotros"
+        title={
+          <>
+            De operar negocios digitales a construir los <span className="imt-text-glow">sistemas que les faltan.</span>
+          </>
+        }
+      />
+
+      <section aria-label="Por qué nace IA Master Tech" className="relative pb-16 sm:pb-24">
+        <div className="mx-auto grid w-full max-w-7xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-[1.2fr_0.8fr] lg:gap-16 lg:px-8">
+          <figure data-reveal="" className="overflow-hidden rounded-[2rem] border border-imt-border">
+            <Image
+              src="/images/imt/estudio.webp"
+              alt="Estudio de desarrollo de noche con dos puestos de trabajo, monitores con código y un tablero de estrategia"
+              width={1536}
+              height={1024}
+              priority
+              sizes="(min-width: 1024px) 60vw, 100vw"
+              className="h-auto w-full"
+            />
+          </figure>
+          <div data-reveal="" className="space-y-5 text-pretty text-lg leading-relaxed text-imt-muted">
+            <p>
+              Después de años operando negocios digitales vimos el mismo patrón una y otra vez: empresas que ya venden,
+              pero que crecen a punta de tareas manuales, hojas de cálculo y personas que no pueden faltar.
+            </p>
+            <p className="text-imt-text">
+              IA Master Tech nace para cerrar esa brecha: ser el equipo de desarrollo que esas empresas no tienen, con
+              estrategia y código trabajando juntos y una entrega funcionando cada semana.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="equipo-title" className="relative py-16 sm:py-24">
+        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+          <header data-reveal="">
+            <Eyebrow>Quiénes construyen</Eyebrow>
+            <h2 id="equipo-title" className="mt-4 text-balance text-4xl font-bold leading-[1.05] sm:text-5xl">
+              Estrategia y código en la misma mesa.
+            </h2>
+          </header>
+          <ul className="mt-12 grid gap-5 md:grid-cols-2">
+            {TEAM.map((member, i) => (
+              <Card key={member.slug} as="li" reveal delay={i * 100} className="sm:p-10">
+                <article id={member.slug} className="grid scroll-mt-28 gap-6 sm:grid-cols-[140px_1fr]">
+                  <TeamAvatar photo={member.photo} name={member.name} initials={member.initials} className="w-32 sm:w-full" sizes="140px" />
+                  <div>
+                    <h3 className="text-3xl font-bold">{member.name}</h3>
+                    <p className="mt-2 font-imt-mono text-xs uppercase tracking-[0.16em] text-imt-accent">{member.role}</p>
+                    <ul className="mt-5 space-y-2">
+                      {(BIOS[member.slug] ?? member.bio).map((line) => (
+                        <li key={line} className="text-pretty leading-relaxed text-imt-muted">
+                          {line}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </article>
+              </Card>
+            ))}
+          </ul>
+          <p data-reveal="" className="mt-12 text-center font-imt-display text-2xl font-medium text-imt-text sm:text-3xl">
+            Sin intermediarios: <span className="text-imt-accent">quien entiende tu negocio es quien lo construye.</span>
           </p>
         </div>
       </section>
 
-      <Section labelledBy="equipo-title" className="border-t border-imt-border bg-imt-elev">
-        <SectionHeader id="equipo-title" eyebrow="Quiénes construyen" title="Estrategia y código en la misma mesa." />
-        <ul className="mt-12 grid gap-4 md:grid-cols-2">
-          {TEAM.map((member, i) => (
-            <Card key={member.slug} as="li" reveal delay={i * 100}>
-              <article id={member.slug} className="scroll-mt-28">
-                <TeamAvatar photo={member.photo} name={member.name} initials={member.initials} className="w-40" sizes="160px" />
-                <h3 className="mt-6 text-2xl font-bold">{member.name}</h3>
-                <p className="mt-1 font-imt-mono text-xs uppercase tracking-[0.16em] text-imt-cyan">{member.role}</p>
-                <ul className="mt-4 space-y-2">
-                  {(BIOS[member.slug] ?? member.bio).map((line) => (
-                    <li key={line} className="text-pretty leading-relaxed text-imt-muted">
-                      {line}
-                    </li>
-                  ))}
-                </ul>
-              </article>
-            </Card>
-          ))}
-        </ul>
-      </Section>
-
-      <Section labelledBy="valores-title">
-        <SectionHeader id="valores-title" eyebrow="Cómo trabajamos" title="Tres reglas que no negociamos." />
-        <ol className="mt-12 grid gap-4 md:grid-cols-3">
-          {VALUES.map((value, i) => (
-            <Card key={value.title} as="li" reveal delay={i * 100}>
-              <span className="font-imt-mono text-sm text-imt-cyan">0{i + 1}</span>
-              <h3 className="mt-4 text-xl font-bold">{value.title}</h3>
-              <p className="mt-3 text-pretty leading-relaxed text-imt-muted">{value.text}</p>
-            </Card>
-          ))}
-        </ol>
-
-        <div data-reveal="" className="mt-16 flex flex-col items-start gap-6 rounded-3xl border border-imt-cyan bg-imt-bg p-8 sm:flex-row sm:items-center sm:justify-between sm:p-10">
-          <p className="max-w-xl text-balance font-imt-display text-2xl font-bold text-imt-text sm:text-3xl">
-            Sin intermediarios: quien entiende tu negocio es quien lo construye.
-          </p>
-          <Button href="/diagnostico" size="lg">
-            Agenda tu diagnóstico
-            <ArrowRight className="size-4" aria-hidden />
-          </Button>
+      <section aria-labelledby="valores-title" className="relative py-16 sm:py-24">
+        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+          <header data-reveal="">
+            <Eyebrow>Cómo trabajamos</Eyebrow>
+            <h2 id="valores-title" className="mt-4 text-balance text-4xl font-bold leading-[1.05] sm:text-5xl">
+              Tres reglas que no negociamos.
+            </h2>
+          </header>
+          <ol className="mt-12 grid gap-5 md:grid-cols-3">
+            {VALUES.map((value, i) => (
+              <Card key={value.title} as="li" reveal delay={i * 100} className="sm:p-10">
+                <span className="font-imt-display text-6xl font-bold text-imt-accent">0{i + 1}</span>
+                <h3 className="mt-6 text-2xl font-bold">{value.title}</h3>
+                <p className="mt-3 text-pretty leading-relaxed text-imt-muted">{value.text}</p>
+              </Card>
+            ))}
+          </ol>
         </div>
-      </Section>
+      </section>
+
+      <FinalCta />
     </>
   );
 }

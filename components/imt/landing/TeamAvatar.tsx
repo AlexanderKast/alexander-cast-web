@@ -30,11 +30,11 @@ export function TeamAvatar({
       ) : (
         <div className="flex size-full items-center justify-center" role="img" aria-label={`${name} (foto pendiente)`}>
           <svg viewBox="0 0 200 200" className="absolute inset-0 size-full" aria-hidden="true">
-            <path d="M0 60H70L90 80H200M40 200V140L60 120H120" fill="none" stroke="#10263a" strokeWidth="2" />
-            <circle cx="90" cy="80" r="4" fill="#1e4a66" />
-            <circle cx="60" cy="120" r="4" fill="#1e4a66" />
+            <path d="M0 60H70L90 80H200M40 200V140L60 120H120" fill="none" stroke="#1a2614" strokeWidth="2" />
+            <circle cx="90" cy="80" r="4" fill="#3a5a1f" />
+            <circle cx="60" cy="120" r="4" fill="#3a5a1f" />
           </svg>
-          <span className="relative font-imt-display text-5xl font-bold tracking-tight text-imt-cyan">{initials}</span>
+          <span className="relative font-imt-display text-5xl font-bold tracking-tight text-imt-accent">{initials}</span>
         </div>
       )}
     </div>
