@@ -5,6 +5,7 @@ import { SiteHeader } from "@/components/imt/layout/SiteHeader";
 import { SiteFooter } from "@/components/imt/layout/SiteFooter";
 import { RevealObserver } from "@/components/imt/ui/RevealObserver";
 import { SystemsCanvas } from "@/components/imt/ui/SystemsCanvas";
+import { PointerEffects } from "@/components/imt/ui/PointerEffects";
 import { buildMetadata } from "@/lib/seo";
 import { site } from "@/content/site";
 
@@ -48,6 +49,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       >
         Saltar al contenido
       </a>
+      <div className="imt-scroll-progress" aria-hidden="true" />
       <SystemsCanvas />
       <SiteHeader />
       <main id="contenido" className="relative z-10">
@@ -56,6 +58,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       <SiteFooter />
       <div className="imt-grain" aria-hidden="true" />
       <RevealObserver />
+      <PointerEffects />
       <Analytics />
       <SpeedInsights />
     </div>

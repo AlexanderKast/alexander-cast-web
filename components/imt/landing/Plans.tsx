@@ -1,6 +1,7 @@
 import { ArrowRight, Check } from "lucide-react";
-import { formatCop, PLAN_CONDITIONS, PLAN_INCLUDES, PLANS } from "@/content/imt";
-import { diagnosticoWhatsappUrl, N_CUPOS } from "@/site.config";
+import Link from "next/link";
+import { diagnosticoHref, formatCop, PLAN_CONDITIONS, PLAN_INCLUDES, PLANS } from "@/content/imt";
+import { N_CUPOS } from "@/site.config";
 import { cn } from "@/lib/utils";
 import { buttonClasses } from "@/components/imt/ui/Button";
 import { GlowBorder } from "@/components/imt/ui/GlowBorder";
@@ -32,6 +33,7 @@ export function Plans() {
             <GlowBorder
               key={plan.id}
               as="li"
+              spotlight
               reveal
               delay={i * 100}
               active={plan.featured}
@@ -69,16 +71,14 @@ export function Plans() {
               </ul>
               <p className="mt-6 flex-1 text-pretty leading-relaxed text-imt-muted">{plan.description}</p>
 
-              <a
-                href={diagnosticoWhatsappUrl(plan.name)}
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                href={diagnosticoHref(plan.id)}
                 className={buttonClasses(plan.featured ? "primary" : "secondary", "lg", "mt-10 w-full")}
-                aria-label={`Agenda tu diagnóstico por WhatsApp — plan ${plan.name}`}
+                aria-label={`Agenda tu diagnóstico — plan ${plan.name}`}
               >
                 Agenda tu diagnóstico
                 <ArrowRight className="size-4" aria-hidden />
-              </a>
+              </Link>
             </GlowBorder>
           ))}
         </ul>

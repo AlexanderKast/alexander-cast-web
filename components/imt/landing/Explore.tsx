@@ -4,6 +4,9 @@ import { ArrowUpRight } from "lucide-react";
 import { formatCop, PLANS } from "@/content/imt";
 import { cn } from "@/lib/utils";
 import { Eyebrow } from "@/components/imt/ui/Eyebrow";
+import construimosImage from "@/public/images/imt/construimos.webp";
+import operamosImage from "@/public/images/imt/operamos.webp";
+import estudioImage from "@/public/images/imt/estudio.webp";
 
 const lowestPrice = Math.min(...PLANS.map((p) => p.priceCop));
 
@@ -13,7 +16,7 @@ const CARDS = [
     eyebrow: "01 · Cómo trabajamos",
     title: "Diagnosticamos, construimos y operamos.",
     text: "Un sprint semanal que ves funcionando en producción.",
-    image: "/images/imt/construimos.webp",
+    image: construimosImage,
     alt: "Brazo robótico ensamblando módulos de software conectados",
     className: "lg:col-span-7 lg:row-span-2",
     imageClass: "aspect-[4/3] lg:aspect-auto lg:h-[420px]",
@@ -23,7 +26,7 @@ const CARDS = [
     eyebrow: "02 · Planes",
     title: `Desde ${formatCop(lowestPrice)} al mes.`,
     text: "Un equipo de desarrollo completo por menos que un empleado.",
-    image: "/images/imt/operamos.webp",
+    image: operamosImage,
     alt: "Tablero de monitoreo con gráficas en vivo",
     className: "lg:col-span-5",
     imageClass: "aspect-[16/9]",
@@ -33,7 +36,7 @@ const CARDS = [
     eyebrow: "03 · Equipo",
     title: "Estrategia y código en la misma mesa.",
     text: "Alexander y Samuel Castaño, sin intermediarios.",
-    image: "/images/imt/estudio.webp",
+    image: estudioImage,
     alt: "Estudio de desarrollo de noche con dos monitores y un tablero de estrategia",
     className: "lg:col-span-5",
     imageClass: "aspect-[16/9]",
@@ -56,18 +59,21 @@ export function Explore() {
             <li
               key={card.href}
               data-reveal=""
+              data-tilt=""
               style={{ "--reveal-delay": `${i * 100}ms` } as React.CSSProperties}
-              className={card.className}
+              className={cn(card.className, "transition-transform duration-300 ease-out")}
             >
               <Link
                 href={card.href}
-                className="imt-glow-border group flex h-full flex-col overflow-hidden transition-transform duration-300 hover:-translate-y-1 motion-reduce:hover:translate-y-0"
+                data-spotlight=""
+                className="imt-glow-border group flex h-full flex-col overflow-hidden"
               >
                 <div className={cn("relative overflow-hidden", card.imageClass)}>
                   <Image
                     src={card.image}
                     alt={card.alt}
                     fill
+                    placeholder="blur"
                     sizes="(min-width: 1024px) 50vw, 100vw"
                     className="object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:group-hover:scale-100"
                   />

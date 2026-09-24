@@ -9,6 +9,8 @@ type GlowBorderProps = {
   className?: string;
   reveal?: boolean;
   delay?: number;
+  /** Pointer spotlight inside the card (see PointerEffects). */
+  spotlight?: boolean;
   children: ReactNode;
 };
 
@@ -19,12 +21,14 @@ export function GlowBorder({
   className,
   reveal,
   delay = 0,
+  spotlight,
   children,
 }: GlowBorderProps) {
   return (
     <Tag
       className={cn("imt-glow-border", className)}
       data-active={active ? "true" : undefined}
+      data-spotlight={spotlight ? "" : undefined}
       {...revealProps(reveal, delay)}
     >
       {children}

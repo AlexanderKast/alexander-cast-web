@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { PROBLEMS } from "@/content/imt";
+import problemaImage from "@/public/images/imt/problema.webp";
 import { Eyebrow } from "@/components/imt/ui/Eyebrow";
 import { PROBLEM_ICONS } from "./icons";
 
@@ -8,13 +9,12 @@ export function Problem() {
     <section id="problema" aria-labelledby="problema-title" className="relative py-20 sm:py-28">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_1fr] lg:gap-16">
-          <figure data-reveal="" className="relative order-2 lg:order-1">
-            <div className="overflow-hidden rounded-[2rem] border border-imt-border">
+          <figure className="relative order-2 lg:order-1">
+            <div data-reveal="" data-tilt="" className="imt-reveal-img overflow-hidden rounded-[2rem] border border-imt-border">
               <Image
-                src="/images/imt/problema.webp"
+                src={problemaImage}
                 alt="Escritorio de noche lleno de hojas de cálculo impresas, notas y celulares con notificaciones"
-                width={1536}
-                height={1024}
+                placeholder="blur"
                 sizes="(min-width: 1024px) 50vw, 100vw"
                 className="h-auto w-full"
               />

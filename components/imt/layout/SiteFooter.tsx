@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { site } from "@/content/site";
-import { NAV_ITEMS } from "@/content/imt";
-import { diagnosticoWhatsappUrl } from "@/site.config";
+import { diagnosticoHref, NAV_ITEMS } from "@/content/imt";
 import { BrandMark } from "./BrandMark";
 
 function InstagramIcon() {
@@ -59,14 +58,9 @@ export function SiteFooter() {
         </div>
 
         <nav aria-label="Secciones y legal" className="flex flex-col gap-3 text-sm md:items-end">
-          <a
-            href={diagnosticoWhatsappUrl()}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-medium text-imt-accent transition-colors hover:text-imt-text"
-          >
+          <Link href={diagnosticoHref()} className="font-medium text-imt-accent transition-colors hover:text-imt-text">
             Agenda tu diagnóstico
-          </a>
+          </Link>
           {NAV_ITEMS.map((item) => (
             <Link key={item.href} href={item.href} className="text-imt-muted transition-colors hover:text-imt-text">
               {item.label}

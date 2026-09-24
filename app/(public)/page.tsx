@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import { Hero } from "@/components/imt/landing/Hero";
 import { Problem } from "@/components/imt/landing/Problem";
 import { Explore } from "@/components/imt/landing/Explore";
+import { ToolsStrip } from "@/components/imt/landing/ToolsStrip";
+import { BeforeAfter } from "@/components/imt/landing/BeforeAfter";
+import { CostCalculator } from "@/components/imt/landing/CostCalculator";
+import { FirstMonth } from "@/components/imt/landing/FirstMonth";
 import { FinalCta } from "@/components/imt/landing/FinalCta";
 import { JsonLd } from "@/components/shared/json-ld";
 import { buildMetadata, buildOrganizationSchema, buildPeopleSchema } from "@/lib/seo";
@@ -20,7 +24,11 @@ export default function HomePage() {
     <>
       <JsonLd schema={[buildOrganizationSchema(), ...buildPeopleSchema()]} />
       <Hero />
+      <ToolsStrip />
       <Problem />
+      <BeforeAfter />
+      <CostCalculator />
+      <FirstMonth />
       <Explore />
       <FinalCta />
     </>

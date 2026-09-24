@@ -207,3 +207,38 @@ export const FAQS = [
     answer: "Sí, todo es remoto. Trabajamos con empresas en Colombia y LATAM.",
   },
 ] as const;
+
+/** Tools we integrate with (text chips, no third-party logos). */
+export const TOOLS = [
+  "Shopify",
+  "Siigo",
+  "HubSpot",
+  "WhatsApp Business",
+  "Google Sheets",
+  "Excel",
+  "Meta Ads",
+  "Gmail",
+  "Google Drive",
+  "APIs a la medida",
+] as const;
+
+/** Before / after comparison (qualitative, no invented numbers). */
+export const BEFORE_AFTER = [
+  { operar: "Cotizaciones armadas a mano en Excel", escalar: "Cotizaciones generadas solas desde tus datos" },
+  { operar: "Pedidos copiados de WhatsApp a una hoja", escalar: "Pedidos que entran directo al sistema" },
+  { operar: "El reporte llega cuando alguien lo termina", escalar: "Tablero con las cifras del día, en tiempo real" },
+  { operar: "Si una persona falta, el proceso se frena", escalar: "El proceso corre sin depender de nadie" },
+] as const;
+
+/** First month timeline, built from what every plan includes. */
+export const FIRST_MONTH = [
+  { week: "Semana 1", title: "Diagnóstico y roadmap", text: "Mapeamos tus procesos, encontramos los cuellos de botella y priorizamos por impacto." },
+  { week: "Semana 2", title: "Primer sprint en producción", text: "La primera entrega funcionando: la ves, la usas y nos das feedback." },
+  { week: "Semana 3", title: "Siguiente sprint", text: "Construimos sobre lo que ya funciona. Tablero compartido y canal directo." },
+  { week: "Semana 4", title: "Informe y seguimiento", text: "Informe mensual de horas y resultados, y reunión para decidir lo que sigue." },
+] as const;
+
+/** Registration (diagnostic form) link; plan preselected when given. */
+export function diagnosticoHref(planId?: PlanId): string {
+  return planId ? `/diagnostico?plan=${planId}` : "/diagnostico";
+}

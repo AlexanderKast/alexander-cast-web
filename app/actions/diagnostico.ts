@@ -13,6 +13,7 @@ import {
   type FieldErrors,
 } from "@/lib/imt/diagnostico";
 import { planName, type PlanId } from "@/content/imt";
+import { whatsappUrl } from "@/site.config";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { sendDiagnosticoNotification } from "@/lib/resend";
 import { formLimiter, emailLimiter } from "@/lib/rate-limit";
@@ -20,7 +21,8 @@ import { logActivity } from "@/lib/admin/activity-logger";
 
 export type DiagnosticoState =
   | { status: "idle" }
-  | { status: "success"; empresa: string; plan: PlanId | null }
+  /** whatsappUrl is only handed out after a valid, saved registration. */
+  | { status: "success"; empresa: string; plan: PlanId | null; whatsappUrl: string | null }
   | { status: "error"; message: string; fieldErrors?: FieldErrors };
 
 export async function diagnosticoAction(
@@ -39,7 +41,7 @@ export async function diagnosticoAction(
   const data = parsed.data;
   // Honeypot filled: pretend success so bots learn nothing.
   if (data.website) {
-    return { status: "success", empresa: data.empresa, plan: data.plan ?? null };
+    return { status: "success", empresa: data.empresa, plan: data.plan ?? null, whatsappUrl: null };
   }
 
   const email = data.email.toLowerCase();
@@ -120,5 +122,8 @@ export async function diagnosticoAction(
     metadata: { origen: "diagnostico", empresa: data.empresa, plan: data.plan ?? null },
   });
 
-  return { status: "success", empresa: data.empresa, plan: data.plan ?? null };
+  const message = `Hola Alexander, acabo de registrar el diagnóstico de ${data.empresa} en IA Master Tech${
+    data.plan ? ` (plan ${planName(data.plan)})` : ""
+  }.`;
+  return { status: "success", empresa: data.empresa, plan: data.plan ?? null, whatsappUrl: whatsappUrl(message) };
 }

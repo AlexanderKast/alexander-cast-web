@@ -9,8 +9,6 @@ export const metadata: Metadata = buildMetadata({
   description:
     "Cuéntanos cómo opera tu empresa hoy. Te escribimos en menos de 24 horas hábiles para agendar el diagnóstico con IA Master Tech.",
   path: "/diagnostico",
-  // Reachable by direct URL only: not linked, not indexed.
-  noindex: true,
 });
 
 const NEXT_STEPS = [

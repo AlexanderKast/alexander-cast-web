@@ -4,10 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { Menu, X } from "lucide-react";
-import { NAV_ITEMS } from "@/content/imt";
+import { diagnosticoHref, NAV_ITEMS } from "@/content/imt";
 import { cn } from "@/lib/utils";
 import { buttonClasses } from "@/components/imt/ui/Button";
-import { diagnosticoWhatsappUrl } from "@/site.config";
 import { BrandMark } from "./BrandMark";
 
 export function SiteHeader() {
@@ -68,14 +67,9 @@ export function SiteHeader() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <a
-            href={diagnosticoWhatsappUrl()}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={buttonClasses("primary", "sm", "hidden sm:inline-flex")}
-          >
+          <Link href={diagnosticoHref()} className={buttonClasses("primary", "sm", "hidden sm:inline-flex")}>
             Agenda tu diagnóstico
-          </a>
+          </Link>
           <button
             ref={toggleRef}
             type="button"
@@ -105,15 +99,13 @@ export function SiteHeader() {
               </li>
             ))}
           </ul>
-          <a
-            href={diagnosticoWhatsappUrl()}
-            target="_blank"
-            rel="noopener noreferrer"
+          <Link
+            href={diagnosticoHref()}
             onClick={() => setOpen(false)}
             className={buttonClasses("primary", "md", "mt-4 w-full")}
           >
             Agenda tu diagnóstico
-          </a>
+          </Link>
         </nav>
       </div>
     </header>

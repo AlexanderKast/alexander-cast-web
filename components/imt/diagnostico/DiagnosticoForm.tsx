@@ -17,7 +17,6 @@ import {
   type FieldErrors,
 } from "@/lib/imt/diagnostico";
 import { isPlanId, PLANS, planName, type PlanId } from "@/content/imt";
-import { whatsappUrl } from "@/site.config";
 import { cn } from "@/lib/utils";
 import { buttonClasses } from "@/components/imt/ui/Button";
 
@@ -132,15 +131,19 @@ function SelectField({
   );
 }
 
-function SuccessView({ empresa, plan, calLink }: { empresa: string; plan: PlanId | null; calLink?: string }) {
+function SuccessView({
+  plan,
+  calLink,
+  whatsappHref,
+}: {
+  plan: PlanId | null;
+  calLink?: string;
+  whatsappHref: string | null;
+}) {
   const headingRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     headingRef.current?.focus();
   }, []);
-
-  const message = `Hola Alexander, acabo de enviar el diagnóstico de ${empresa} en IA Master Tech${
-    plan ? ` (plan ${planName(plan)})` : ""
-  }.`;
 
   return (
     <div className="imt-card p-6 sm:p-10" role="status">
@@ -148,23 +151,27 @@ function SuccessView({ empresa, plan, calLink }: { empresa: string; plan: PlanId
       <h2 ref={headingRef} tabIndex={-1} className="mt-5 text-3xl font-bold outline-none sm:text-4xl">
         Recibimos tu diagnóstico.
       </h2>
-      <p className="mt-3 text-lg text-imt-muted">Te escribimos en menos de 24 horas hábiles.</p>
+      <p className="mt-3 text-lg text-imt-muted">
+        Te escribimos en menos de 24 horas hábiles{plan ? ` sobre el plan ${planName(plan)}` : ""}. No tienes que hacer nada más.
+      </p>
 
       {calLink ? (
         <div className="mt-10">
           <h3 className="text-xl font-bold">¿Quieres adelantar? Reserva la llamada de 30 minutos</h3>
-          <p className="mt-2 text-sm text-imt-muted">Elige el horario que te sirva. Llegamos con tu formulario leído.</p>
+          <p className="mt-2 text-sm text-imt-muted">Opcional. Elige el horario que te sirva; llegamos con tu formulario leído.</p>
           <div className="mt-6">
             <CalEmbed calLink={calLink} namespace="diagnostico" brandColor="#A3E635" />
           </div>
         </div>
       ) : null}
 
-      <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-        <a href={whatsappUrl(message)} target="_blank" rel="noopener noreferrer" className={buttonClasses("secondary", "md")}>
-          <MessageCircle className="size-4" aria-hidden />
-          Escríbenos por WhatsApp
-        </a>
+      <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+        {whatsappHref ? (
+          <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className={buttonClasses("secondary", "md")}>
+            <MessageCircle className="size-4" aria-hidden />
+            Escríbenos por WhatsApp (opcional)
+          </a>
+        ) : null}
         <Link href="/" className={buttonClasses("secondary", "md")}>
           Volver al inicio
         </Link>
@@ -196,7 +203,7 @@ export function DiagnosticoForm({ calLink }: { calLink?: string }) {
   }, [state]);
 
   if (state.status === "success") {
-    return <SuccessView empresa={state.empresa} plan={state.plan} calLink={calLink} />;
+    return <SuccessView plan={state.plan} calLink={calLink} whatsappHref={state.whatsappUrl} />;
   }
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {

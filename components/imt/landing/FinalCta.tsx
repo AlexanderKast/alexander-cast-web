@@ -1,6 +1,6 @@
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/imt/ui/Button";
-import { diagnosticoWhatsappUrl } from "@/site.config";
+import { diagnosticoHref } from "@/content/imt";
 
 /** Closing call to action shared by every public page. */
 export function FinalCta() {
@@ -16,7 +16,7 @@ export function FinalCta() {
             Tu empresa ya vende. <span className="imt-text-glow">Ahora necesita sistemas que crezcan con ella.</span>
           </h2>
           <div className="mt-10 flex justify-center">
-            <Button href={diagnosticoWhatsappUrl()} external size="lg">
+            <Button href={diagnosticoHref()} size="lg">
               Agenda tu diagnóstico
               <ArrowRight className="size-4" aria-hidden />
             </Button>

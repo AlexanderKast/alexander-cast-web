@@ -1,10 +1,11 @@
 import type { CSSProperties } from "react";
 import Image from "next/image";
-import { ArrowRight } from "lucide-react";
+import { ArrowDown, ArrowRight } from "lucide-react";
+import heroImage from "@/public/images/imt/hero.webp";
 import { Button } from "@/components/imt/ui/Button";
 import { Counter } from "@/components/imt/ui/Counter";
 import { Eyebrow } from "@/components/imt/ui/Eyebrow";
-import { diagnosticoWhatsappUrl } from "@/site.config";
+import { diagnosticoHref } from "@/content/imt";
 
 /** Splits a word into letters that fade in one by one (CSS, see .imt-letter). */
 function Letters({ word, start, className }: { word: string; start: number; className?: string }) {
@@ -30,6 +31,13 @@ export function Hero() {
     <section id="inicio" aria-labelledby="hero-title" className="relative overflow-hidden pb-16 pt-28 sm:pt-32 lg:pb-24">
       <div className="mx-auto grid w-full max-w-7xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-[1fr_1.1fr] lg:gap-10 lg:px-8">
         <div className="relative z-10">
+          <p className="mb-6 inline-flex items-center gap-2.5 rounded-full border border-imt-accent/40 bg-imt-bg/80 px-4 py-1.5 text-sm text-imt-text backdrop-blur">
+            <span className="relative flex size-2.5" aria-hidden="true">
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-imt-accent opacity-70 motion-reduce:animate-none" />
+              <span className="relative inline-flex size-2.5 rounded-full bg-imt-accent" />
+            </span>
+            Cupos fundadores abiertos este trimestre
+          </p>
           <Eyebrow>Alexander Cast presenta · IA Master Tech</Eyebrow>
 
           <h1 id="hero-title" className="mt-6 text-[clamp(3rem,10vw,6.5rem)] font-bold leading-[0.9] tracking-[-0.045em]">
@@ -54,7 +62,7 @@ export function Hero() {
           </p>
 
           <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-            <Button href={diagnosticoWhatsappUrl()} external size="lg">
+            <Button href={diagnosticoHref()} size="lg">
               Agenda tu diagnóstico
               <ArrowRight className="size-4" aria-hidden />
             </Button>
@@ -68,17 +76,20 @@ export function Hero() {
           </p>
         </div>
 
-        <div className="relative">
+        <div className="imt-parallax relative">
           <div
             aria-hidden="true"
             className="absolute -inset-6 -z-10 rounded-[2.5rem] bg-[radial-gradient(closest-side,rgba(163,230,53,0.28),rgba(5,7,5,0))]"
           />
-          <figure className="overflow-hidden rounded-[2rem] border border-imt-border bg-imt-bg shadow-[0_40px_120px_-40px_rgba(163,230,53,0.55)]">
+          <figure
+            data-tilt=""
+            data-spotlight=""
+            className="overflow-hidden rounded-[2rem] border border-imt-border bg-imt-bg shadow-[0_40px_120px_-40px_rgba(163,230,53,0.55)] transition-transform duration-300 ease-out"
+          >
             <Image
-              src="/images/imt/hero.webp"
+              src={heroImage}
               alt="Cables enredados y papeles que se transforman en un circuito ordenado de módulos de datos iluminados en verde"
-              width={1344}
-              height={752}
+              placeholder="blur"
               priority
               sizes="(min-width: 1024px) 55vw, 100vw"
               className="h-auto w-full"
@@ -92,7 +103,15 @@ export function Hero() {
         </div>
       </div>
 
-      <div className="mx-auto mt-16 w-full max-w-7xl px-4 sm:px-6 lg:mt-20 lg:px-8">
+      <a
+        href="#problema"
+        className="mx-auto mt-14 flex w-fit flex-col items-center gap-2 rounded-full px-3 py-2 font-imt-mono text-[11px] uppercase tracking-[0.24em] text-imt-muted transition-colors hover:text-imt-accent"
+      >
+        Scroll
+        <ArrowDown className="imt-scroll-hint size-4" aria-hidden />
+      </a>
+
+      <div className="mx-auto mt-10 w-full max-w-7xl px-4 sm:px-6 lg:px-8">
         <dl className="grid overflow-hidden rounded-3xl border border-imt-border bg-imt-border sm:grid-cols-3 sm:gap-px">
           {STATS.map((stat, i) => (
             <div

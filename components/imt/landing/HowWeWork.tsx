@@ -6,6 +6,17 @@ import { GlowBorder } from "@/components/imt/ui/GlowBorder";
 import { PauseWhenHidden } from "./PauseWhenHidden";
 import { RESULT_ICONS, STEP_ICONS } from "./icons";
 import { SprintLog } from "./SprintLog";
+import type { StepIcon } from "@/content/imt";
+import type { StaticImageData } from "next/image";
+import diagnosticamosImage from "@/public/images/imt/diagnosticamos.webp";
+import construimosImage from "@/public/images/imt/construimos.webp";
+import operamosImage from "@/public/images/imt/operamos.webp";
+
+const STEP_IMAGES: Record<StepIcon, StaticImageData> = {
+  diagnose: diagnosticamosImage,
+  build: construimosImage,
+  operate: operamosImage,
+};
 
 /** The three steps as alternating image / text rows. */
 export function StepsZigzag() {
@@ -20,20 +31,19 @@ export function StepsZigzag() {
           const reversed = i % 2 === 1;
           return (
             <li key={step.title} className="grid items-center gap-10 lg:grid-cols-2 lg:gap-20">
-              <figure data-reveal="" className={cn("relative", reversed && "lg:order-2")}>
-                <div className="overflow-hidden rounded-[2rem] border border-imt-border bg-imt-bg">
+              <figure className={cn("relative", reversed && "lg:order-2")}>
+                <div data-reveal="" data-tilt="" className="imt-reveal-img overflow-hidden rounded-[2rem] border border-imt-border bg-imt-bg">
                   <Image
-                    src={step.image}
+                    src={STEP_IMAGES[step.icon]}
                     alt={step.alt}
-                    width={1024}
-                    height={1024}
+                    placeholder="blur"
                     sizes="(min-width: 1024px) 45vw, 100vw"
                     className="h-auto w-full"
                   />
                 </div>
                 <span
                   aria-hidden="true"
-                  className="absolute -top-6 left-6 font-imt-display text-8xl font-bold leading-none text-imt-accent/90 [-webkit-text-stroke:0] sm:text-9xl"
+                  className="absolute -top-6 left-6 z-10 font-imt-display text-8xl font-bold leading-none text-imt-accent drop-shadow-[0_0_24px_rgba(163,230,53,0.6)] sm:text-9xl"
                 >
                   0{i + 1}
                 </span>
@@ -104,6 +114,7 @@ export function ResultsBento() {
             return (
               <GlowBorder
                 key={result.title}
+                spotlight
                 as="li"
                 reveal
                 delay={i * 70}

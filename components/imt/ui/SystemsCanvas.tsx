@@ -163,8 +163,8 @@ export function SystemsCanvas() {
 
       // Positions: chaos → order, plus drift and pointer repulsion.
       for (const n of nodes) {
-        const wobX = Math.sin(time * 0.0006 + n.phase) * 10 * drift;
-        const wobY = Math.cos(time * 0.0005 + n.phase) * 10 * drift;
+        const wobX = Math.sin(time * 0.0007 + n.phase) * 18 * drift;
+        const wobY = Math.cos(time * 0.0006 + n.phase) * 18 * drift;
         let x = n.cx + wobX + (n.ox - n.cx - wobX) * p;
         let y = n.cy + wobY + (n.oy - n.cy - wobY) * p;
         if (pointer.active) {
@@ -193,8 +193,9 @@ export function SystemsCanvas() {
           if (j < 0) continue;
           const b = nodes[j];
           const dist = Math.hypot(a.x - b.x, a.y - b.y);
-          const tidy = Math.min(1, Math.max(0, (2.4 * spacing - dist) / (1.4 * spacing)));
-          const alpha = (0.04 + 0.2 * p) * tidy + 0.45 * Math.max(a.glow, b.glow);
+          // Chaos: only short, tangled links survive. Order: the clean grid.
+          const tidy = Math.min(1, Math.max(0, (2.6 * spacing - dist) / (1.6 * spacing)));
+          const alpha = (0.1 + 0.22 * p) * tidy + 0.6 * Math.max(a.glow, b.glow);
           if (alpha < 0.015) continue;
           ctx.strokeStyle = `rgba(${ACCENT},${alpha.toFixed(3)})`;
           ctx.beginPath();
@@ -204,12 +205,21 @@ export function SystemsCanvas() {
         }
       }
 
+      // Pointer spotlight (one translucent layer on a transparent canvas).
+      if (pointer.active) {
+        const spot = ctx.createRadialGradient(pointer.x, pointer.y, 0, pointer.x, pointer.y, radius * 1.6);
+        spot.addColorStop(0, `rgba(${ACCENT},0.16)`);
+        spot.addColorStop(1, `rgba(${ACCENT},0)`);
+        ctx.fillStyle = spot;
+        ctx.fillRect(pointer.x - radius * 1.6, pointer.y - radius * 1.6, radius * 3.2, radius * 3.2);
+      }
+
       // Pointer "connects" the nodes around it.
       if (pointer.active) {
         for (const n of nodes) {
           const d = Math.hypot(n.x - pointer.x, n.y - pointer.y);
           if (d > radius) continue;
-          ctx.strokeStyle = `rgba(${ACCENT},${((1 - d / radius) * 0.35).toFixed(3)})`;
+          ctx.strokeStyle = `rgba(${ACCENT},${((1 - d / radius) * 0.6).toFixed(3)})`;
           ctx.beginPath();
           ctx.moveTo(pointer.x, pointer.y);
           ctx.lineTo(n.x, n.y);
@@ -219,10 +229,10 @@ export function SystemsCanvas() {
 
       // Nodes.
       for (const n of nodes) {
-        const alpha = Math.min(1, 0.25 + 0.35 * p + n.glow);
+        const alpha = Math.min(1, 0.45 + 0.3 * p + n.glow);
         ctx.fillStyle = `rgba(${ACCENT},${alpha.toFixed(3)})`;
         ctx.beginPath();
-        ctx.arc(n.x, n.y, 1.4 + n.glow * 2.6, 0, Math.PI * 2);
+        ctx.arc(n.x, n.y, 2 + n.glow * 3.5, 0, Math.PI * 2);
         ctx.fill();
       }
 
@@ -268,7 +278,8 @@ export function SystemsCanvas() {
       progress += (target - progress) * 0.06;
       scrollBoost *= 0.9;
 
-      const wanted = Math.floor(easeInOut(progress) * maxPackets);
+      // A few erratic packets even in chaos; the full flow once ordered.
+      const wanted = Math.floor(3 + easeInOut(progress) * (maxPackets - 3));
       if (packets.length < wanted && Math.random() < 0.3) spawnPacket();
       packets = packets.filter((pk) => {
         pk.t += pk.speed * (1 + scrollBoost * 0.08);

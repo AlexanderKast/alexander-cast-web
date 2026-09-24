@@ -9,18 +9,14 @@
  */
 export const N_CUPOS: number | null = null;
 
-/** WhatsApp number in international format, digits only (current site number). */
+/**
+ * WhatsApp number in international format, digits only (current site number).
+ * Server-only on purpose: it is handed out after a registration, never in
+ * public pages or client bundles.
+ */
 export const WHATSAPP_NUMBER = "573132947776";
 
 export function whatsappUrl(message: string): string {
   return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
 }
 
-/** Prefilled WhatsApp link for the "Agenda tu diagnóstico" CTAs. */
-export function diagnosticoWhatsappUrl(planName?: string): string {
-  return whatsappUrl(
-    planName
-      ? `Hola Alexander, quiero agendar el diagnóstico de IA Master Tech. Me interesa el plan ${planName}.`
-      : "Hola Alexander, quiero agendar el diagnóstico de IA Master Tech.",
-  );
-}

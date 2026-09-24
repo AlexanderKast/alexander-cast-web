@@ -8,6 +8,7 @@ import { TeamAvatar } from "@/components/imt/landing/TeamAvatar";
 import { FinalCta } from "@/components/imt/landing/FinalCta";
 import { JsonLd } from "@/components/shared/json-ld";
 import { buildMetadata, buildOrganizationSchema, buildPeopleSchema } from "@/lib/seo";
+import estudioImage from "@/public/images/imt/estudio.webp";
 
 export const metadata: Metadata = buildMetadata({
   title: "Nosotros",
@@ -60,13 +61,11 @@ export default function NosotrosPage() {
 
       <section aria-label="Por qué nace IA Master Tech" className="relative pb-16 sm:pb-24">
         <div className="mx-auto grid w-full max-w-7xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-[1.2fr_0.8fr] lg:gap-16 lg:px-8">
-          <figure data-reveal="" className="overflow-hidden rounded-[2rem] border border-imt-border">
+          <figure data-reveal="" data-tilt="" className="imt-reveal-img overflow-hidden rounded-[2rem] border border-imt-border">
             <Image
-              src="/images/imt/estudio.webp"
+              src={estudioImage}
               alt="Estudio de desarrollo de noche con dos puestos de trabajo, monitores con código y un tablero de estrategia"
-              width={1536}
-              height={1024}
-              priority
+              placeholder="blur"
               sizes="(min-width: 1024px) 60vw, 100vw"
               className="h-auto w-full"
             />
