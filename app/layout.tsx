@@ -7,7 +7,9 @@ import {
   Inter,
   JetBrains_Mono,
 } from "next/font/google";
+import Script from "next/script";
 import { site } from "@/content/site";
+import { REVEAL_BOOTSTRAP } from "@/components/imt/ui/reveal-bootstrap";
 import "./globals.css";
 
 /*
@@ -70,9 +72,9 @@ export const viewport: Viewport = {
   maximumScale: 5,
 };
 
-const TITULO_POR_DEFECTO = "Alexander Cast — Estrategia Digital & IA";
-const DESCRIPCION_POR_DEFECTO =
-  "Estratega digital, de contenido e IA. Fundador de KREOON e Infiny Group. Medellín, Colombia.";
+const TITULO_POR_DEFECTO =
+  "IA Master Tech · Desarrollo y automatización para empresas | Alexander Cast";
+const DESCRIPCION_POR_DEFECTO = site.description;
 
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
@@ -117,6 +119,10 @@ export default function RootLayout({
       className={`${dmSans.variable} ${fraunces.variable} ${bebas.variable} ${spaceGrotesk.variable} ${inter.variable} ${jetbrainsMono.variable} dark`}
     >
       <body className="min-h-screen antialiased">
+        {/* Arms the public site's scroll reveal before first paint; no-op elsewhere. */}
+        <Script id="imt-reveal-bootstrap" strategy="beforeInteractive">
+          {REVEAL_BOOTSTRAP}
+        </Script>
         {children}
       </body>
     </html>

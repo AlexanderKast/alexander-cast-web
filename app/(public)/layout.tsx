@@ -1,76 +1,59 @@
 import type { Metadata, Viewport } from "next";
-import { Analytics }    from "@vercel/analytics/next";
+import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-import { HomeChromeEstilos }     from "@/components/home/HomeChromeEstilos";
-import { HomeVideoBackground } from "@/components/home/HomeVideoBackground";
-import { HomeHeader }          from "@/components/home/HomeHeader";
-import { HomeFooter }          from "@/components/home/HomeFooter";
+import { SiteHeader } from "@/components/imt/layout/SiteHeader";
+import { SiteFooter } from "@/components/imt/layout/SiteFooter";
+import { RevealObserver } from "@/components/imt/ui/RevealObserver";
+import { buildMetadata } from "@/lib/seo";
 import { site } from "@/content/site";
 
 export const viewport: Viewport = {
-  themeColor: "#000000",
+  themeColor: "#05080D",
   colorScheme: "dark",
   width: "device-width",
   initialScale: 1,
 };
 
-const TITULO_PUBLICO = "Alexander Castaño — Estrategia Digital, Contenido & IA";
-const DESCRIPCION_PUBLICA =
-  "Paisa de Medellín con 8+ años construyendo negocios digitales en LATAM.";
+const TITLE = "IA Master Tech · Desarrollo y automatización para empresas | Alexander Cast";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(site.url),
+  ...buildMetadata({ title: TITLE, description: site.description, path: "/" }),
   title: {
-    default: "Alexander Castaño — Estrategia Digital, Contenido & IA",
-    template: "%s — Alexander Castaño",
+    default: TITLE,
+    template: "%s | IA Master Tech",
   },
-  description:
-    "Paisa de Medellín con 8+ años construyendo negocios digitales en LATAM. Estrategia digital, contenido que convierte e inteligencia artificial aplicada al negocio real.",
   keywords: [
-    "Alexander Castaño",
-    "estrategia digital LATAM",
-    "consultoría IA Medellín",
-    "contenido UGC",
-    "AI-First emprendedores",
-    "agencia de contenido",
-    "emprende con alexander",
+    "IA Master Tech",
+    "Alexander Cast",
+    "desarrollo de software a la medida",
+    "automatización de procesos",
+    "integraciones Shopify Siigo",
+    "dashboards en tiempo real",
+    "agentes de IA para empresas",
+    "Medellín",
   ],
-  alternates: { canonical: "/" },
-  openGraph: {
-    type: "website",
-    locale: "es_CO",
-    url: site.url,
-    siteName: "Emprende con Alexander",
-    title: TITULO_PUBLICO,
-    description: DESCRIPCION_PUBLICA,
-    // Sin imagen declarada, compartir el sitio en WhatsApp o LinkedIn
-    // mostraba solo texto.
-    images: [{ url: site.ogImage, width: 1200, height: 630, alt: site.name }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: TITULO_PUBLICO,
-    description: DESCRIPCION_PUBLICA,
-    images: [site.ogImage],
-  },
-  robots: { index: true, follow: true },
 };
 
+/**
+ * Public site shell. `data-theme="imt"` scopes the IA Master Tech tokens
+ * (app/imt.css) so admin, portal and brief keep the original theme.
+ */
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
-    <>
-      <HomeChromeEstilos />
-
-      {/* Chrome compartido en todas las páginas */}
-      <HomeVideoBackground />
-      <HomeHeader />
-
-      {children}
-
-      <HomeFooter />
-
+    <div data-theme="imt" className="imt-page">
+      <a
+        href="#contenido"
+        className="sr-only z-[70] rounded-full bg-imt-cyan px-4 py-2 font-semibold text-imt-bg focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+      >
+        Saltar al contenido
+      </a>
+      <SiteHeader />
+      <main id="contenido">{children}</main>
+      <SiteFooter />
+      <div className="imt-grain" aria-hidden="true" />
+      <RevealObserver />
       <Analytics />
       <SpeedInsights />
-    </>
+    </div>
   );
 }

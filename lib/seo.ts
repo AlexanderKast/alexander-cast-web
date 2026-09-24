@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { site } from "@/content/site";
-import type { Empresa } from "@/content/empresas";
-import type { FAQ } from "@/content/faqs";
-import type { Servicio } from "@/content/servicios";
+import { FAQS, PLANS, TEAM } from "@/content/imt";
 
 const DEFAULT_IMAGE = site.ogImage;
 
@@ -49,9 +47,9 @@ export function buildMetadata({
         },
     openGraph: {
       type: "website",
-      locale: site.locale,
+      locale: "es_CO",
       url,
-      siteName: site.name,
+      siteName: `${site.name} · ${site.producto}`,
       title,
       description,
       images: [
@@ -68,128 +66,101 @@ export function buildMetadata({
       title,
       description,
       images: [absoluteImage],
-      creator: site.social.x.handle,
-      site: site.social.x.handle,
     },
   };
 }
 
-/** JSON-LD Person para Alexander Cast */
-export function buildPersonSchema(): Record<string, unknown> {
-  return {
-    "@context": "https://schema.org",
-    "@type": "Person",
-    name: site.name,
-    alternateName: site.handle,
-    url: site.url,
-    image: new URL(DEFAULT_IMAGE, site.url).toString(),
-    jobTitle: site.rol,
-    description: site.description,
-    address: {
-      "@type": "PostalAddress",
-      addressLocality: "Medellin",
-      addressCountry: "CO",
-    },
-    knowsLanguage: site.idiomas,
-    sameAs: [
-      site.social.instagram.url,
-      site.social.tiktok.url,
-      site.social.youtube.url,
-      site.social.linkedin.url,
-      site.social.x.url,
-      site.social.github.url,
-    ],
-    worksFor: site.fundador.map((nombre) => ({
-      "@type": "Organization",
-      name: nombre,
-    })),
-  };
+const ORG_ID = `${site.url}/#organization`;
+
+function personId(slug: string) {
+  return `${site.url}/nosotros#${slug}`;
 }
 
-/** JSON-LD Organization para una empresa del ecosistema */
-export function buildOrganizationSchema(
-  empresa: Empresa,
-): Record<string, unknown> {
+/** JSON-LD Organization for IA Master Tech (endorsed by Alexander Cast). */
+export function buildOrganizationSchema(): Record<string, unknown> {
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: empresa.nombre,
-    url: empresa.url,
-    description: empresa.descripcion,
-    logo: new URL(empresa.logo, site.url).toString(),
-    slogan: empresa.tagline,
-    founder: {
-      "@type": "Person",
-      name: site.name,
-      url: site.url,
+    "@id": ORG_ID,
+    name: site.producto,
+    alternateName: `${site.name} · ${site.producto}`,
+    url: site.url,
+    description: site.description,
+    logo: new URL("/icon.png", site.url).toString(),
+    image: new URL(DEFAULT_IMAGE, site.url).toString(),
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: "Medellín",
+      addressCountry: "CO",
     },
+    areaServed: ["CO", "LATAM"],
+    sameAs: [site.social.instagram.url],
+    founder: TEAM.map((member) => ({ "@id": personId(member.slug) })),
+    employee: TEAM.map((member) => ({ "@id": personId(member.slug) })),
   };
 }
 
-/** JSON-LD FAQPage desde content/faqs.ts */
-export function buildFAQSchema(items: FAQ[]): Record<string, unknown> {
-  return {
+/** JSON-LD Person for each team member. */
+export function buildPeopleSchema(): Record<string, unknown>[] {
+  return TEAM.map((member) => ({
     "@context": "https://schema.org",
-    "@type": "FAQPage",
-    mainEntity: items.map((faq) => ({
-      "@type": "Question",
-      name: faq.pregunta,
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: faq.respuesta,
-      },
-    })),
-  };
+    "@type": "Person",
+    "@id": personId(member.slug),
+    name: member.name,
+    jobTitle: member.role,
+    description: member.bio.join(" "),
+    worksFor: { "@id": ORG_ID },
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: "Medellín",
+      addressCountry: "CO",
+    },
+    ...(member.slug === "alexander" ? { sameAs: [site.social.linkedin.url] } : {}),
+  }));
 }
 
-/** JSON-LD Service para un servicio premium */
-export function buildServiceSchema(
-  servicio: Servicio,
-): Record<string, unknown> {
+/** JSON-LD Service with the three monthly plans, priced in COP ("desde"). */
+export function buildServiceSchema(): Record<string, unknown> {
   return {
     "@context": "https://schema.org",
     "@type": "Service",
-    name: servicio.nombre,
-    description: servicio.descripcion,
-    serviceType: "Consultoria estrategica",
-    provider: {
-      "@type": "Person",
-      name: site.name,
-      url: site.url,
-    },
-    areaServed: ["LATAM", "Espana"],
+    name: `${site.producto} — Desarrollo y automatización`,
+    serviceType: "Desarrollo de software y automatización de procesos",
+    description: site.description,
+    provider: { "@id": ORG_ID },
+    areaServed: ["CO", "LATAM"],
     availableLanguage: site.idiomas,
-    offers: {
-      "@type": "Offer",
-      price: servicio.precio,
-      priceCurrency: "USD",
-      availability: "https://schema.org/InStock",
-      url: new URL(servicio.ctaHref, site.url).toString(),
+    hasOfferCatalog: {
+      "@type": "OfferCatalog",
+      name: "Planes mensuales",
+      itemListElement: PLANS.map((plan) => ({
+        "@type": "Offer",
+        name: plan.name,
+        description: `${plan.description} ${plan.hours} · ${plan.projects}.`,
+        url: new URL(`/diagnostico?plan=${plan.id}`, site.url).toString(),
+        priceSpecification: {
+          "@type": "UnitPriceSpecification",
+          minPrice: plan.priceCop,
+          priceCurrency: "COP",
+          unitText: "MONTH",
+        },
+      })),
     },
   };
 }
 
-/** JSON-LD WebSite con SearchAction */
-export function buildWebsiteSchema(): Record<string, unknown> {
+/** JSON-LD FAQPage with the landing FAQ. */
+export function buildFAQSchema(): Record<string, unknown> {
   return {
     "@context": "https://schema.org",
-    "@type": "WebSite",
-    name: site.name,
-    url: site.url,
-    description: site.description,
-    inLanguage: site.locale,
-    publisher: {
-      "@type": "Person",
-      name: site.name,
-      url: site.url,
-    },
-    potentialAction: {
-      "@type": "SearchAction",
-      target: {
-        "@type": "EntryPoint",
-        urlTemplate: `${site.url}/blog?q={search_term_string}`,
+    "@type": "FAQPage",
+    mainEntity: FAQS.map((faq) => ({
+      "@type": "Question",
+      name: faq.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: faq.answer,
       },
-      "query-input": "required name=search_term_string",
-    },
+    })),
   };
 }

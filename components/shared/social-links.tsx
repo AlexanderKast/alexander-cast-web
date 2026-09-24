@@ -65,10 +65,7 @@ function XIcon(props: IconProps) {
 
 const links = [
   { key: "instagram", label: "Instagram", Icon: InstagramIcon, url: site.social.instagram.url },
-  { key: "tiktok", label: "TikTok", Icon: TikTokIcon, url: site.social.tiktok.url },
-  { key: "youtube", label: "YouTube", Icon: YoutubeIcon, url: site.social.youtube.url },
   { key: "linkedin", label: "LinkedIn", Icon: LinkedinIcon, url: site.social.linkedin.url },
-  { key: "x", label: "X", Icon: XIcon, url: site.social.x.url },
 ] as const;
 
 export function SocialLinks({ variant = "footer", className }: SocialLinksProps) {

@@ -11,29 +11,28 @@ const URL_SITIO = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.alexandercast
 
 export const site = {
   name: "Alexander Cast",
-  handle: "@alexemprendee",
-  tagline: "Dios. Estrategia. IA.",
+  /** Product sold on the platform ("Alexander Cast presenta IA Master Tech"). */
+  producto: "IA Master Tech",
+  handle: "@elmaster.ia",
+  tagline: "Operar vs. Escalar",
   url: URL_SITIO,
   locale: "es-CO",
   description:
-    "Estratega digital, de contenido e IA. Ayudo a emprendedores tradicionales a dar el salto al digital y a quienes están creando su marca personal, producto o negocio desde cero.",
+    "Tu equipo de desarrollo y automatización con entregas semanales. Software a la medida, integraciones, dashboards y agentes de IA para empresas que ya venden.",
   descriptionCorta:
-    "Convierte tu marca o negocio en una máquina de clientes. Estrategia, contenido e IA aplicada.",
+    "Desarrollo y automatización para empresas que ya venden. Una entrega funcionando cada semana.",
   promesa:
-    "Ayudo a emprendedores tradicionales a dar el salto al mundo digital y a quienes están creando marca, producto o negocio desde cero.",
+    "El punto en el que tu empresa deja de depender de tareas manuales y empieza a crecer con sistemas.",
   ubicacion: "Medellín, Colombia",
   idiomas: ["Español"],
-  rol: "Estratega Digital y de IA",
+  rol: "IA Master Tech — Desarrollo & Automatización",
   fundador: [
-    "Master IA Tech",
+    "IA Master Tech",
     "UGC Colombia",
     "KREOON",
     "Infiny Group",
   ],
-  /** TODO(alex): proyectos y empresas fundadas aún sin confirmar. */
   metricas: {
-    proyectos: "[XX]",
-    empresasFundadas: "[X]",
     aniosConstruyendo: "8",
   },
   // Imagen generada por app/opengraph-image.tsx. Antes apuntaba a
@@ -41,24 +40,13 @@ export const site = {
   ogImage: "/opengraph-image",
   social: {
     instagram: {
-      handle: "@alexemprendee",
-      url: "https://instagram.com/alexemprendee",
+      handle: "@elmaster.ia",
+      url: "https://www.instagram.com/elmaster.ia",
     },
-    tiktok: {
-      handle: "@alexemprendee",
-      url: "https://tiktok.com/@alexemprendee",
-    },
-    youtube: {
-      handle: "@alexemprendee",
-      url: "https://youtube.com/@alexemprendee",
-    },
+    // TODO(alex): confirm this is the LinkedIn profile to show in the footer.
     linkedin: {
       handle: "alexandercast",
       url: "https://www.linkedin.com/in/alexandercast",
-    },
-    x: {
-      handle: "@alexemprendee",
-      url: "https://x.com/alexemprendee",
     },
     github: {
       handle: "AlexanderKast",

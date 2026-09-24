@@ -3,13 +3,6 @@
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 
-/**
- * Inline bootstrap: arms the reveal CSS before first paint. If hydration never
- * happens (JS error, blocked bundle), it disarms after 3 s so content is never
- * left invisible.
- */
-export const REVEAL_BOOTSTRAP = `(function(){var d=document.documentElement;d.classList.add('imt-js');setTimeout(function(){if(!d.hasAttribute('data-reveal-ready'))d.classList.remove('imt-js')},3000)})();`;
-
 const SELECTOR = "[data-reveal]:not([data-revealed])";
 
 /**

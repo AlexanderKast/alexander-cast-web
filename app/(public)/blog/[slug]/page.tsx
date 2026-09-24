@@ -7,7 +7,6 @@ import rehypeSlug from "rehype-slug";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypePrettyCode from "rehype-pretty-code";
 import { listBlogPosts, getBlogPost } from "@/lib/blog";
-import { Badge } from "@/components/ui/badge";
 import { buildMetadata } from "@/lib/seo";
 
 type Params = { slug: string };
@@ -29,6 +28,7 @@ export async function generateMetadata({
     title: post.title,
     description: post.excerpt,
     path: `/blog/${post.slug}`,
+    noindex: true,
   });
 }
 
@@ -42,16 +42,16 @@ export default async function BlogPostPage({
   if (!post) notFound();
 
   return (
-    <article className="container-narrow py-24 md:py-32">
+    <article className="mx-auto w-full max-w-3xl px-4 pb-24 pt-32 sm:px-6 md:pt-40">
       <Link
         href="/blog"
-        className="inline-flex items-center gap-2 text-sm text-white/60 transition-colors hover:text-white"
+        className="inline-flex items-center gap-2 rounded-full text-sm text-imt-muted transition-colors hover:text-imt-text"
       >
         <ArrowLeft className="size-4" /> Volver al blog
       </Link>
 
       <header className="mt-10 space-y-4">
-        <div className="flex flex-wrap items-center gap-3 text-xs text-white/50">
+        <div className="flex flex-wrap items-center gap-3 font-imt-mono text-xs uppercase tracking-[0.14em] text-imt-muted">
           <time dateTime={post.date}>
             {new Date(post.date).toLocaleDateString("es-CO", {
               year: "numeric",
@@ -60,22 +60,17 @@ export default async function BlogPostPage({
             })}
           </time>
           <span aria-hidden>·</span>
-          <Badge
-            variant="outline"
-            className="border-[color:var(--gold)]/40 text-[color:var(--gold)]"
-          >
-            {post.pilar}
-          </Badge>
+          <span className="text-imt-cyan">{post.pilar}</span>
           <span aria-hidden>·</span>
           <span>{post.readingMinutes} min</span>
         </div>
-        <h1 className="font-display text-4xl md:text-5xl tracking-tight text-balance">
+        <h1 className="text-balance text-4xl font-bold leading-tight md:text-5xl">
           {post.title}
         </h1>
-        <p className="text-lg text-white/70 text-pretty">{post.excerpt}</p>
+        <p className="text-pretty text-lg text-imt-muted">{post.excerpt}</p>
       </header>
 
-      <div className="prose prose-invert mt-12 max-w-none prose-headings:font-display prose-a:text-[color:var(--gold)]">
+      <div className="prose prose-invert mt-12 max-w-none prose-headings:font-imt-display prose-a:text-imt-cyan prose-p:text-imt-muted prose-li:text-imt-muted">
         <MDXRemote
           source={post.content}
           options={{

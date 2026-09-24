@@ -45,6 +45,17 @@ const nextConfig: NextConfig = {
       { source: "/panel", destination: "/admin/briefs", permanent: false },
       { source: "/panel/login", destination: "/admin/login", permanent: false },
       { source: "/panel/:id", destination: "/admin/briefs/:id", permanent: false },
+
+      /*
+       * IA Master Tech: the consulting pages are retired. 301 (not Next's
+       * default 308 for `permanent`) as requested for SEO continuity.
+       */
+      { source: "/servicios", destination: "/#planes", statusCode: 301 },
+      { source: "/consultoria", destination: "/#planes", statusCode: 301 },
+      { source: "/sobre-mi", destination: "/nosotros", statusCode: 301 },
+      { source: "/contacto", destination: "/diagnostico", statusCode: 301 },
+      { source: "/podcast", destination: "/", statusCode: 301 },
+      { source: "/recursos", destination: "/", statusCode: 301 },
     ];
   },
   async headers() {
