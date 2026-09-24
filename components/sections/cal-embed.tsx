@@ -6,23 +6,26 @@ import Cal, { getCalApi } from "@calcom/embed-react";
 export function CalEmbed({
   calLink,
   namespace = "consultoria",
+  brandColor = "#E6B800",
 }: {
   calLink: string;
   namespace?: string;
+  /** Accent color inside the Cal.com widget (defaults to the original gold). */
+  brandColor?: string;
 }) {
   useEffect(() => {
     (async () => {
       const cal = await getCalApi({ namespace });
       cal("ui", {
         cssVarsPerTheme: {
-          dark: { "cal-brand": "#E6B800" },
-          light: { "cal-brand": "#E6B800" },
+          dark: { "cal-brand": brandColor },
+          light: { "cal-brand": brandColor },
         },
         hideEventTypeDetails: false,
         layout: "month_view",
       });
     })();
-  }, [namespace]);
+  }, [namespace, brandColor]);
 
   return (
     <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/40">
