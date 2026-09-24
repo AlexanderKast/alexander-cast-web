@@ -228,15 +228,18 @@
   /* ── Scroll reveal (only armed when JS is running) ───── */
   .imt-js [data-reveal] {
     opacity: 0;
-    transform: translateY(16px);
+    transform: translateY(36px) scale(0.985);
+    filter: blur(6px);
     transition:
-      opacity 600ms cubic-bezier(0.16, 1, 0.3, 1),
-      transform 600ms cubic-bezier(0.16, 1, 0.3, 1);
+      opacity 800ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 900ms cubic-bezier(0.16, 1, 0.3, 1),
+      filter 700ms ease;
     transition-delay: var(--reveal-delay, 0ms);
   }
   .imt-js [data-reveal][data-revealed="true"] {
     opacity: 1;
     transform: none;
+    filter: none;
   }
 
   /* ── Marquee ─────────────────────────────────────────── */
@@ -438,6 +441,110 @@
   }
 }
 
+@layer components {
+  /* ── Button shine sweep ── */
+  .imt-btn-primary {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+  .imt-btn-primary::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    transform: translateX(-120%) skewX(-20deg);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+    transition: transform 700ms ease;
+  }
+  .imt-btn-primary:hover::after {
+    transform: translateX(120%) skewX(-20deg);
+  }
+
+  /* ── Dotted grid backdrop (behind a section) ── */
+  .imt-dots {
+    background-image: radial-gradient(rgba(163, 230, 53, 0.16) 1px, transparent 1.5px);
+    background-size: 26px 26px;
+    mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, #000 30%, transparent 80%);
+  }
+
+  /* ── Footer wordmark: outline that fills on hover ── */
+  .imt-wordmark {
+    color: transparent;
+    -webkit-text-stroke: 1px var(--border-solid);
+    transition: color 500ms ease, -webkit-text-stroke-color 500ms ease;
+  }
+  .imt-wordmark:hover {
+    color: var(--accent);
+    -webkit-text-stroke-color: var(--accent);
+  }
+
+  /* ── Circuit divider: the trace draws itself as it scrolls into view ── */
+  .imt-divider-trace {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 0;
+  }
+  @supports (animation-timeline: view()) {
+    .imt-divider-trace {
+      stroke-dashoffset: 1;
+      animation: imt-draw linear both;
+      animation-timeline: view();
+      animation-range: entry 10% cover 45%;
+    }
+  }
+
+  /* ── Custom cursor (desktop, see CustomCursor) ── */
+  .imt-cursor {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 80;
+    pointer-events: none;
+    border-radius: 999px;
+    transform: translate3d(-100px, -100px, 0);
+  }
+  .imt-cursor-dot {
+    width: 6px;
+    height: 6px;
+    margin: -3px 0 0 -3px;
+    background: var(--accent);
+  }
+  .imt-cursor-ring {
+    width: 38px;
+    height: 38px;
+    margin: -19px 0 0 -19px;
+    border: 1.5px solid rgba(163, 230, 53, 0.7);
+    transition:
+      width 200ms ease,
+      height 200ms ease,
+      margin 200ms ease,
+      background-color 200ms ease;
+  }
+  .imt-cursor-ring[data-hover="true"] {
+    width: 64px;
+    height: 64px;
+    margin: -32px 0 0 -32px;
+    background-color: rgba(163, 230, 53, 0.1);
+  }
+
+  /* ── Floating chips around the hero image ── */
+  .imt-float {
+    animation: imt-float 6s ease-in-out infinite;
+    animation-delay: var(--float-delay, 0s);
+  }
+}
+
+@keyframes imt-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes imt-float {
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
 @keyframes imt-spin {
   to {
     --imt-angle: 360deg;
@@ -478,8 +585,13 @@
   }
   .imt-parallax,
   .imt-scroll-hint,
-  .imt-timeline-fill {
+  .imt-timeline-fill,
+  .imt-divider-trace,
+  .imt-float {
     animation: none;
+  }
+  .imt-divider-trace {
+    stroke-dashoffset: 0;
   }
   [data-tilt] {
     transform: none !important;
@@ -490,10 +602,12 @@
     transform: none;
     animation: none;
   }
+  /* Gentle mode: keep the progressive fade, drop the movement. */
   .imt-js [data-reveal] {
-    opacity: 1;
     transform: none;
-    transition: none;
+    filter: none;
+    transition: opacity 600ms ease;
+    transition-delay: var(--reveal-delay, 0ms);
   }
   .imt-glow-border:hover,
   .imt-glow-border[data-active="true"] {
@@ -501,18 +615,7 @@
     --imt-angle: 120deg;
   }
   .imt-marquee-track {
-    animation: none;
-  }
-  .imt-marquee-track[aria-hidden="true"] {
-    display: none;
-  }
-  .imt-marquee {
-    mask-image: none;
-  }
-  .imt-marquee-track:first-child {
-    flex-wrap: wrap;
-    justify-content: center;
-    row-gap: 0.75rem;
+    animation-duration: 90s;
   }
   .imt-pulse {
     display: none;

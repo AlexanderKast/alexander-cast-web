@@ -100,6 +100,29 @@ export function Hero() {
               <span className="text-imt-accent">Escalar</span>
             </figcaption>
           </figure>
+
+          {/* Illustrative status chips floating around the image. */}
+          <ul aria-hidden="true" className="pointer-events-none">
+            {[
+              { text: "Pedido sincronizado", className: "-left-3 top-6 sm:-left-8", delay: "0s", pop: 1400 },
+              { text: "Cotización enviada", className: "-right-3 top-1/3 sm:-right-6", delay: "1.2s", pop: 1650 },
+              { text: "Tablero actualizado", className: "bottom-14 left-6 sm:-left-4", delay: "2.1s", pop: 1900 },
+            ].map((chip) => (
+              <li
+                key={chip.text}
+                className={`imt-letter absolute ${chip.className}`}
+                style={{ animationDelay: `${chip.pop}ms` } as CSSProperties}
+              >
+                <span
+                  className="imt-float flex items-center gap-2 rounded-full border border-imt-accent/50 bg-imt-bg/90 px-3.5 py-2 text-xs font-medium text-imt-text shadow-[0_10px_30px_-10px_rgba(163,230,53,0.6)] backdrop-blur sm:text-sm"
+                  style={{ "--float-delay": chip.delay } as CSSProperties}
+                >
+                  <span className="inline-flex size-4 items-center justify-center rounded-full bg-imt-accent text-[10px] font-bold text-imt-bg">✓</span>
+                  {chip.text}
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
 

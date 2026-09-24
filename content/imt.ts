@@ -4,6 +4,7 @@
  */
 
 export const NAV_ITEMS = [
+  { label: "Inicio", href: "/" },
   { label: "Cómo trabajamos", href: "/como-trabajamos" },
   { label: "Planes", href: "/planes" },
   { label: "Equipo", href: "/nosotros" },

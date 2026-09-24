@@ -3,7 +3,8 @@ import { Hero } from "@/components/imt/landing/Hero";
 import { Problem } from "@/components/imt/landing/Problem";
 import { Explore } from "@/components/imt/landing/Explore";
 import { ToolsStrip } from "@/components/imt/landing/ToolsStrip";
-import { BeforeAfter } from "@/components/imt/landing/BeforeAfter";
+import { ChaosToSystem } from "@/components/imt/landing/ChaosToSystem";
+import { CircuitDivider } from "@/components/imt/ui/CircuitDivider";
 import { CostCalculator } from "@/components/imt/landing/CostCalculator";
 import { FirstMonth } from "@/components/imt/landing/FirstMonth";
 import { FinalCta } from "@/components/imt/landing/FinalCta";
@@ -26,9 +27,12 @@ export default function HomePage() {
       <Hero />
       <ToolsStrip />
       <Problem />
-      <BeforeAfter />
+      <ChaosToSystem />
+      <CircuitDivider />
       <CostCalculator />
+      <CircuitDivider flip />
       <FirstMonth />
+      <CircuitDivider />
       <Explore />
       <FinalCta />
     </>

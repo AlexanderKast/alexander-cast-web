@@ -50,8 +50,11 @@ export function SystemsCanvas() {
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
 
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const animate = !reduceMotion && !isStaticRoute;
+    // Many Windows PCs report reduced motion just because "animation effects"
+    // is off. Instead of freezing, run a gentle mode: slow drift, no ripples.
+    const gentle = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const animate = !isStaticRoute;
+    const speed = gentle ? 0.35 : 1;
 
     let width = 0;
     let height = 0;
@@ -163,8 +166,8 @@ export function SystemsCanvas() {
 
       // Positions: chaos → order, plus drift and pointer repulsion.
       for (const n of nodes) {
-        const wobX = Math.sin(time * 0.0007 + n.phase) * 18 * drift;
-        const wobY = Math.cos(time * 0.0006 + n.phase) * 18 * drift;
+        const wobX = Math.sin(time * 0.0007 * speed + n.phase) * 18 * drift;
+        const wobY = Math.cos(time * 0.0006 * speed + n.phase) * 18 * drift;
         let x = n.cx + wobX + (n.ox - n.cx - wobX) * p;
         let y = n.cy + wobY + (n.oy - n.cy - wobY) * p;
         if (pointer.active) {
@@ -282,7 +285,7 @@ export function SystemsCanvas() {
       const wanted = Math.floor(3 + easeInOut(progress) * (maxPackets - 3));
       if (packets.length < wanted && Math.random() < 0.3) spawnPacket();
       packets = packets.filter((pk) => {
-        pk.t += pk.speed * (1 + scrollBoost * 0.08);
+        pk.t += pk.speed * speed * (1 + scrollBoost * 0.08);
         if (pk.t < 1) return true;
         // Arrived: continue to a random next neighbour (no immediate U-turn).
         if (packets.length > wanted + 6) return false;
@@ -352,7 +355,7 @@ export function SystemsCanvas() {
       pointer.x = e.clientX;
       pointer.y = e.clientY;
       pointer.active = e.pointerType === "mouse";
-      ripples.push({ x: e.clientX, y: e.clientY, r: 4, life: 1 });
+      if (!gentle) ripples.push({ x: e.clientX, y: e.clientY, r: 4, life: 1 });
       const origin = nearestNode(e.clientX, e.clientY);
       for (let i = 0; i < 4; i++) spawnPacket(origin);
     };

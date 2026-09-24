@@ -73,6 +73,11 @@ export function SiteFooter() {
           ))}
         </nav>
       </div>
+      <div aria-hidden="true" className="mx-auto w-full max-w-7xl overflow-hidden px-4 sm:px-6 lg:px-8">
+        <p className="imt-wordmark select-none whitespace-nowrap font-imt-display text-[17vw] font-bold leading-[0.85] tracking-[-0.05em] lg:text-[13.5rem]">
+          IA Master Tech
+        </p>
+      </div>
       <div className="border-t border-imt-border">
         <p className="mx-auto w-full max-w-6xl px-4 py-6 font-imt-mono text-xs uppercase tracking-[0.14em] text-imt-muted sm:px-6 lg:px-8">
           © 2026 Alexander Cast · IA Master Tech
