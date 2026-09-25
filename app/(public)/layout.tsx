@@ -7,6 +7,7 @@ import { RevealObserver } from "@/components/imt/ui/RevealObserver";
 import { SystemsCanvas } from "@/components/imt/ui/SystemsCanvas";
 import { PointerEffects } from "@/components/imt/ui/PointerEffects";
 import { CustomCursor } from "@/components/imt/ui/CustomCursor";
+import { NavigationLoader } from "@/components/imt/ui/NavigationLoader";
 import { buildMetadata } from "@/lib/seo";
 import { site } from "@/content/site";
 
@@ -61,6 +62,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       <RevealObserver />
       <PointerEffects />
       <CustomCursor />
+      <NavigationLoader />
       <Analytics />
       <SpeedInsights />
     </div>

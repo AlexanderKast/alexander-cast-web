@@ -111,8 +111,12 @@ export function CustomCursor() {
 
   return (
     <>
-      <div ref={ringRef} aria-hidden="true" className="imt-cursor imt-cursor-ring opacity-0" />
-      <div ref={dotRef} aria-hidden="true" className="imt-cursor imt-cursor-dot opacity-0" />
+      <div ref={ringRef} aria-hidden="true" className="imt-cursor imt-cursor-ring opacity-0">
+        <span className="imt-cursor-shape" />
+      </div>
+      <div ref={dotRef} aria-hidden="true" className="imt-cursor imt-cursor-dot opacity-0">
+        <span className="imt-cursor-shape" />
+      </div>
     </>
   );
 }

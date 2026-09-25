@@ -554,55 +554,63 @@
   }
 
   /* ── Custom cursor (desktop, see CustomCursor) ── */
+  /*
+   * Cursor: the outer .imt-cursor is only moved (inline translate3d from JS);
+   * the inner shape is what scales. Scaling the moved element itself would
+   * scale its translation too and throw the ring far from the pointer.
+   */
   .imt-cursor {
     position: fixed;
     left: 0;
     top: 0;
     z-index: 80;
+    width: 0;
+    height: 0;
     pointer-events: none;
-    border-radius: 999px;
     transform: translate3d(-100px, -100px, 0);
   }
-  .imt-cursor-dot {
+  .imt-cursor-shape {
+    position: absolute;
+    left: 0;
+    top: 0;
+    display: block;
+    border-radius: 999px;
+    transform: translate(-50%, -50%);
+  }
+  .imt-cursor-dot .imt-cursor-shape {
     width: 6px;
     height: 6px;
-    margin: -3px 0 0 -3px;
     background: var(--accent);
-  }
-  .imt-cursor-ring {
-    width: 38px;
-    height: 38px;
-    margin: -19px 0 0 -19px;
-    border: 1.5px solid rgba(163, 230, 53, 0.7);
-    /* `scale` composes with the inline translate: compositor-only, no layout. */
-    transition:
-      scale var(--imt-dur-base) var(--imt-ease-out),
-      opacity var(--imt-dur-base) ease-out,
-      background-color var(--imt-dur-base) ease-out,
-      border-color var(--imt-dur-base) ease-out;
-  }
-  .imt-cursor-dot {
     transition:
       opacity var(--imt-dur-base) ease-out,
       scale var(--imt-dur-base) var(--imt-ease-out);
   }
-  .imt-cursor-ring[data-hover="true"] {
+  .imt-cursor-ring .imt-cursor-shape {
+    width: 38px;
+    height: 38px;
+    border: 1.5px solid rgba(163, 230, 53, 0.7);
+    transition:
+      scale var(--imt-dur-base) var(--imt-ease-out),
+      background-color var(--imt-dur-base) ease-out,
+      border-color var(--imt-dur-base) ease-out;
+  }
+  .imt-cursor-ring[data-hover="true"] .imt-cursor-shape {
     scale: 1.7;
     border-color: rgba(163, 230, 53, 0.9);
     background-color: rgba(163, 230, 53, 0.1);
   }
   /* Over text fields the ring shrinks and fades so the caret stays clear. */
-  .imt-cursor-ring[data-hover="text"] {
+  .imt-cursor-ring[data-hover="text"] .imt-cursor-shape {
     scale: 0.5;
     border-color: rgba(163, 230, 53, 0.35);
   }
-  .imt-cursor-ring[data-hover="text"] + .imt-cursor-dot {
+  .imt-cursor-ring[data-hover="text"] + .imt-cursor-dot .imt-cursor-shape {
     scale: 0;
   }
-  .imt-cursor-ring[data-pressed="true"] {
+  .imt-cursor-ring[data-pressed="true"] .imt-cursor-shape {
     scale: 0.8;
   }
-  .imt-cursor-ring[data-hover="true"][data-pressed="true"] {
+  .imt-cursor-ring[data-hover="true"][data-pressed="true"] .imt-cursor-shape {
     scale: 1.45;
   }
 
@@ -876,6 +884,116 @@
   }
   .imt-img-fade-bottom {
     mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
+  }
+}
+
+@layer components {
+  /* ── Navigation loader (NavigationLoader): covers WHILE the next page loads ── */
+  .imt-nav-loader {
+    position: fixed;
+    inset: 0;
+    z-index: 95;
+    display: grid;
+    place-items: center;
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity 550ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .imt-nav-loader[data-phase="revealing"] {
+    opacity: 0;
+  }
+  .imt-nav-wave,
+  .imt-nav-veil {
+    position: absolute;
+    inset: 0;
+    clip-path: circle(0px at var(--nav-x) var(--nav-y));
+    /* Same animation in both phases so revealing never restarts or snaps. */
+    animation: imt-nav-open 560ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+  .imt-nav-wave {
+    background: var(--accent);
+  }
+  .imt-nav-veil {
+    background: var(--bg);
+    animation-delay: 120ms;
+  }
+  .imt-nav-mark {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 116px;
+    height: 116px;
+    opacity: 0;
+    transform: scale(0.6);
+    transition:
+      opacity 350ms ease 180ms,
+      transform 600ms cubic-bezier(0.22, 1, 0.36, 1) 180ms;
+  }
+  .imt-nav-loader[data-phase="covering"] .imt-nav-mark {
+    opacity: 1;
+    transform: none;
+  }
+  .imt-nav-loader[data-phase="revealing"] .imt-nav-mark {
+    opacity: 0;
+    transform: scale(1.25);
+    transition-delay: 0ms;
+  }
+  .imt-nav-ring {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transform-origin: 50% 50%;
+    animation: imt-nav-spin 1.1s linear infinite;
+  }
+  .imt-nav-track {
+    fill: none;
+    stroke: #1a2614;
+    stroke-width: 3;
+  }
+  .imt-nav-dash {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-dasharray: 28 72;
+  }
+  .imt-nav-dots {
+    fill: none;
+    stroke: var(--glow);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-dasharray: 1 7;
+    opacity: 0.75;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: imt-nav-spin 2.4s linear infinite reverse;
+  }
+  .imt-nav-glyph {
+    width: 42px;
+    height: 42px;
+    filter: drop-shadow(0 0 10px rgba(163, 230, 53, 0.7));
+  }
+  .imt-nav-glyph path {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .imt-nav-glyph circle {
+    fill: var(--accent);
+  }
+}
+
+@keyframes imt-nav-open {
+  to {
+    clip-path: circle(var(--nav-r) at var(--nav-x) var(--nav-y));
+  }
+}
+@keyframes imt-nav-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 

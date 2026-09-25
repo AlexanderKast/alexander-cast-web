@@ -25,7 +25,8 @@ import { usePathname } from "next/navigation";
  * static frame. If Canvas 2D is unavailable a CSS gradient stands in.
  */
 
-const STATIC_ROUTES = ["/diagnostico"];
+// Every public route animates (the form included, per the client).
+const STATIC_ROUTES: string[] = [];
 const LIME = "#A3E635";
 const GREEN = "#22C55E";
 const HEAD = "#BEF264";

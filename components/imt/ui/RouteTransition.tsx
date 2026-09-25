@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 
 // Module-level state shared by every mount in this tab.
 let hasMounted = false;
+const SHOW_CURTAIN = false;
 let listening = false;
 const lastPress = { x: 0, y: 0, at: 0 };
 
@@ -86,7 +87,9 @@ export function RouteTransition({ children }: { children: ReactNode }) {
 
   return (
     <>
-      {overlay ? (curtain?.host ? createPortal(overlay, curtain.host) : overlay) : null}
+      {/* The cover + spinning ring now lives in NavigationLoader (shown while the
+          next page loads); this component only fades the new content in. */}
+      {SHOW_CURTAIN && overlay ? (curtain?.host ? createPortal(overlay, curtain.host) : overlay) : null}
       <div className={curtain ? "imt-route-enter" : undefined}>{children}</div>
     </>
   );
