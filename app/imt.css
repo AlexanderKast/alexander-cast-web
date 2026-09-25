@@ -902,21 +902,66 @@
   .imt-nav-loader[data-phase="revealing"] {
     opacity: 0;
   }
-  .imt-nav-wave,
-  .imt-nav-veil {
+  /* Phones: circle wave built with transform: scale (GPU), not clip-path. */
+  .imt-nav-dot {
     position: absolute;
-    inset: 0;
-    clip-path: circle(0px at var(--nav-x) var(--nav-y));
-    /* Same animation in both phases so revealing never restarts or snaps. */
-    animation: imt-nav-open 560ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    left: calc(var(--nav-x) - var(--nav-r));
+    top: calc(var(--nav-y) - var(--nav-r));
+    width: calc(var(--nav-r) * 2);
+    height: calc(var(--nav-r) * 2);
+    border-radius: 999px;
+    transform: scale(0);
+    will-change: transform;
+    animation: imt-nav-grow 420ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
   }
-  .imt-nav-wave {
+  .imt-nav-dot-wave {
     background: var(--accent);
   }
-  .imt-nav-veil {
+  .imt-nav-dot-veil {
     background: var(--bg);
-    animation-delay: 120ms;
+    animation-delay: 90ms;
   }
+
+  /* Desktop: a lime dash streaks across, a dark panel slides in behind it
+     while the next page loads, then keeps going to reveal it. */
+  .imt-nav-panel {
+    position: absolute;
+    inset: 0;
+    background: var(--bg);
+    border-right: 3px solid var(--accent);
+    box-shadow: 12px 0 60px -10px rgba(163, 230, 53, 0.55);
+    transform: translateX(-102%);
+    will-change: transform;
+    animation: imt-nav-panel-in 460ms cubic-bezier(0.7, 0, 0.3, 1) 70ms forwards;
+  }
+  .imt-nav-loader[data-phase="revealing"] .imt-nav-panel {
+    animation: imt-nav-panel-out 520ms cubic-bezier(0.7, 0, 0.3, 1) forwards;
+  }
+  .imt-nav-bar {
+    position: absolute;
+    left: 0;
+    top: calc(50% - 3px);
+    width: 42vw;
+    height: 6px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(163, 230, 53, 0), var(--accent) 70%, #f7fee7);
+    box-shadow: 0 0 24px rgba(163, 230, 53, 0.8);
+    transform: translateX(-45vw);
+    will-change: transform;
+    animation: imt-nav-dash 560ms cubic-bezier(0.55, 0, 0.2, 1) forwards;
+  }
+  .imt-nav-bar-thin {
+    top: calc(50% + 34px);
+    width: 24vw;
+    height: 2px;
+    opacity: 0.7;
+    animation-delay: 60ms;
+  }
+  .imt-nav-loader[data-mode="dash"] .imt-nav-mark {
+    width: 84px;
+    height: 84px;
+  }
+
   .imt-nav-mark {
     position: relative;
     display: grid;
@@ -972,6 +1017,8 @@
   .imt-nav-glyph {
     width: 42px;
     height: 42px;
+  }
+  .imt-nav-loader[data-mode="dash"] .imt-nav-glyph {
     filter: drop-shadow(0 0 10px rgba(163, 230, 53, 0.7));
   }
   .imt-nav-glyph path {
@@ -986,9 +1033,27 @@
   }
 }
 
-@keyframes imt-nav-open {
+@keyframes imt-nav-grow {
   to {
-    clip-path: circle(var(--nav-r) at var(--nav-x) var(--nav-y));
+    transform: scale(1);
+  }
+}
+@keyframes imt-nav-panel-in {
+  to {
+    transform: translateX(0);
+  }
+}
+@keyframes imt-nav-panel-out {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(102%);
+  }
+}
+@keyframes imt-nav-dash {
+  to {
+    transform: translateX(110vw);
   }
 }
 @keyframes imt-nav-spin {

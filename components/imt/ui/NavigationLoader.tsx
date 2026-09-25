@@ -4,9 +4,13 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { usePathname } from "next/navigation";
 
 type Phase = "idle" | "covering" | "revealing";
+type Mode = "dash" | "circle";
 
-const MIN_VISIBLE_MS = 450; // let the ring turn at least once
-const REVEAL_MS = 550;
+// Desktop: a lime dash + sliding panel. Phones: the circle wave, tuned light.
+const TIMING: Record<Mode, { minVisible: number; reveal: number }> = {
+  dash: { minVisible: 380, reveal: 520 },
+  circle: { minVisible: 250, reveal: 380 },
+};
 const FAILSAFE_MS = 6000; // never leave the screen covered
 
 /**
@@ -22,6 +26,8 @@ export function NavigationLoader() {
   const pathname = usePathname();
   const [phase, setPhase] = useState<Phase>("idle");
   const [origin, setOrigin] = useState<CSSProperties>({});
+  const [mode, setMode] = useState<Mode>("circle");
+  const modeRef = useRef<Mode>("circle");
   const startedAt = useRef(0);
   const phaseRef = useRef<Phase>("idle");
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -39,11 +45,12 @@ export function NavigationLoader() {
   const reveal = () => {
     if (phaseRef.current !== "covering") return;
     clearTimers();
-    const wait = Math.max(0, MIN_VISIBLE_MS - (performance.now() - startedAt.current));
+    const timing = TIMING[modeRef.current];
+    const wait = Math.max(0, timing.minVisible - (performance.now() - startedAt.current));
     timers.current.push(
       setTimeout(() => {
         go("revealing");
-        timers.current.push(setTimeout(() => go("idle"), REVEAL_MS));
+        timers.current.push(setTimeout(() => go("idle"), timing.reveal));
       }, wait),
     );
   };
@@ -53,6 +60,11 @@ export function NavigationLoader() {
     const cover = (x: number, y: number) => {
       clearTimers();
       const reach = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y)) + 40;
+      if (phaseRef.current === "idle") {
+        const next: Mode = matchMedia("(min-width: 1024px) and (pointer: fine)").matches ? "dash" : "circle";
+        modeRef.current = next;
+        setMode(next);
+      }
       setOrigin({
         "--nav-x": `${Math.round(x)}px`,
         "--nav-y": `${Math.round(y)}px`,
@@ -93,22 +105,35 @@ export function NavigationLoader() {
 
   if (phase === "idle") return null;
 
+  const mark = (
+    <span className="imt-nav-mark">
+      <svg viewBox="0 0 120 120" className="imt-nav-ring">
+        <circle cx="60" cy="60" r="52" className="imt-nav-track" />
+        <circle cx="60" cy="60" r="52" pathLength={100} className="imt-nav-dash" />
+      </svg>
+      <svg viewBox="0 0 32 32" className="imt-nav-glyph">
+        <path d="M9 22V10h4l3 6 3-6h4v12" />
+        <circle cx="9" cy="22" r="1.8" />
+        <circle cx="23" cy="22" r="1.8" />
+      </svg>
+    </span>
+  );
+
   return (
-    <div aria-hidden="true" className="imt-nav-loader" data-phase={phase} style={origin}>
-      <span className="imt-nav-wave" />
-      <span className="imt-nav-veil" />
-      <span className="imt-nav-mark">
-        <svg viewBox="0 0 120 120" className="imt-nav-ring">
-          <circle cx="60" cy="60" r="52" className="imt-nav-track" />
-          <circle cx="60" cy="60" r="52" pathLength={100} className="imt-nav-dash" />
-          <circle cx="60" cy="60" r="40" pathLength={100} className="imt-nav-dots" />
-        </svg>
-        <svg viewBox="0 0 32 32" className="imt-nav-glyph">
-          <path d="M9 22V10h4l3 6 3-6h4v12" />
-          <circle cx="9" cy="22" r="1.8" />
-          <circle cx="23" cy="22" r="1.8" />
-        </svg>
-      </span>
+    <div aria-hidden="true" className="imt-nav-loader" data-phase={phase} data-mode={mode} style={origin}>
+      {mode === "dash" ? (
+        <>
+          <span className="imt-nav-panel" />
+          <span className="imt-nav-bar" />
+          <span className="imt-nav-bar imt-nav-bar-thin" />
+        </>
+      ) : (
+        <>
+          <span className="imt-nav-dot imt-nav-dot-wave" />
+          <span className="imt-nav-dot imt-nav-dot-veil" />
+        </>
+      )}
+      {mark}
     </div>
   );
 }
