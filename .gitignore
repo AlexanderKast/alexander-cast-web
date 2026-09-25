@@ -6,15 +6,24 @@
 .env
 .env.local
 .env.production
+.env.development
 .env.development.local
 .env.test.local
 .env.production.local
+.npmrc
+
+# ── LLAVES Y CERTIFICADOS ────────────────────────────────────
+*.pem
+*.key
+*.p12
+*.pfx
 
 # ── GOOGLE CREDENTIALS ───────────────────────────────────────
 service-account.json
 credentials.json
 token.json
 *-service-account.json
+service-account*.json
 
 # ── NEXT.JS ──────────────────────────────────────────────────
 .next/

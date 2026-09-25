@@ -55,6 +55,14 @@
     /* 4.1:1 on --bg: only for large or decorative text, never body copy. */
     --text-dim: #6F7A66;
 
+    /* Motion tokens: ease-out curves only, so nothing lands abruptly. */
+    --imt-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --imt-ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    --imt-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+    --imt-dur-fast: 180ms;
+    --imt-dur-base: 320ms;
+    --imt-dur-slow: 600ms;
+
     color: var(--text);
     font-family: var(--font-imt-body);
     font-feature-settings: normal;
@@ -120,21 +128,25 @@
     font-weight: 600;
     line-height: 1;
     white-space: nowrap;
+    /* Transform eases back slowly after the magnetic pull (PointerEffects);
+       the press uses the independent `scale` property so both compose. */
     transition:
-      transform 180ms ease,
-      background-color 180ms ease,
-      border-color 180ms ease,
-      color 180ms ease,
-      box-shadow 180ms ease;
+      transform 420ms var(--imt-ease-out),
+      scale 160ms var(--imt-ease-out),
+      background-color var(--imt-dur-fast) ease-out,
+      border-color var(--imt-dur-fast) ease-out,
+      color var(--imt-dur-fast) ease-out,
+      box-shadow var(--imt-dur-base) var(--imt-ease-out);
   }
   .imt-btn:active {
-    transform: translateY(1px);
+    scale: 0.97;
   }
   .imt-btn[aria-disabled="true"],
   .imt-btn:disabled {
     opacity: 0.55;
     cursor: not-allowed;
     transform: none;
+    scale: 1;
   }
   .imt-btn-primary {
     background-color: var(--accent);
@@ -179,7 +191,7 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-imt-lg);
     background-color: var(--surface);
-    transition: border-color 200ms ease;
+    transition: border-color var(--imt-dur-base) var(--imt-ease-out);
   }
   .imt-glow-border:hover,
   .imt-glow-border[data-active="true"] {
@@ -200,6 +212,12 @@
   }
   .imt-glow-border[data-active="true"] {
     box-shadow: 0 24px 80px -32px rgba(163,230,53, 0.55);
+  }
+
+  /* ── Background canvas fallback (no Canvas 2D available) ── */
+  .imt-canvas[data-fallback="true"] {
+    /* One translucent layer over the solid page background. */
+    background: radial-gradient(ellipse 60% 45% at 50% 40%, rgba(163, 230, 53, 0.1), transparent 72%);
   }
 
   /* ── Grain overlay ───────────────────────────────────── */
@@ -241,6 +259,17 @@
     transform: none;
     filter: none;
   }
+  /* Phones: no blur (expensive to composite) and a shorter travel. */
+  @media (max-width: 767px), (pointer: coarse) {
+    .imt-js [data-reveal] {
+      transform: translateY(24px);
+      filter: none;
+      transition:
+        opacity 700ms var(--imt-ease-expo),
+        transform 800ms var(--imt-ease-expo);
+      transition-delay: var(--reveal-delay, 0ms);
+    }
+  }
 
   /* ── Marquee ─────────────────────────────────────────── */
   .imt-marquee {
@@ -272,13 +301,15 @@
   }
 
   /* ── Accordion (grid rows: no max-height clipping) ───── */
+  /* Closing is a bit quicker than opening; both ease out, never snap. */
   .imt-collapse {
     display: grid;
     grid-template-rows: 0fr;
-    transition: grid-template-rows 480ms cubic-bezier(0.22, 1, 0.36, 1);
+    transition: grid-template-rows 420ms var(--imt-ease-out);
   }
   .imt-collapse[data-open="true"] {
     grid-template-rows: 1fr;
+    transition-duration: 560ms;
   }
   .imt-collapse > * {
     overflow: hidden;
@@ -289,13 +320,15 @@
     opacity: 0;
     transform: translateY(-8px);
     transition:
-      opacity 380ms ease,
-      transform 480ms cubic-bezier(0.22, 1, 0.36, 1);
+      opacity 220ms ease-out,
+      transform 420ms var(--imt-ease-out);
   }
   .imt-collapse[data-open="true"] > * > * {
     opacity: 1;
     transform: none;
-    transition-delay: 120ms;
+    transition:
+      opacity 420ms ease-out 120ms,
+      transform 560ms var(--imt-ease-out) 60ms;
   }
 }
 
@@ -336,7 +369,7 @@
     border-radius: inherit;
     pointer-events: none;
     opacity: 0;
-    transition: opacity 250ms ease;
+    transition: opacity 400ms ease-out;
     background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%), rgba(163, 230, 53, 0.13), transparent 60%);
   }
   [data-spotlight]:hover::after {
@@ -346,8 +379,13 @@
   /* ── 3D tilt (transform set by PointerEffects) ── */
   [data-tilt] {
     transform-style: preserve-3d;
-    will-change: transform;
-    transition: transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
+    transition: transform 700ms var(--imt-ease-out);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    /* Layer promotion only where the tilt can actually run (not on phones). */
+    [data-tilt] {
+      will-change: transform;
+    }
   }
 
   /* ── Scroll progress bar (CSS scroll-driven; hidden where unsupported) ── */
@@ -366,16 +404,23 @@
       animation: imt-grow linear both;
       animation-timeline: scroll(root);
     }
-    .imt-parallax {
-      animation: imt-parallax linear both;
-      animation-timeline: view();
-      animation-range: entry 0% exit 100%;
+    /* Large screens only: on phones the parallax adds work for little effect. */
+    @media (min-width: 1024px) {
+      .imt-parallax {
+        animation: imt-parallax linear both;
+        animation-timeline: view();
+        animation-range: entry 0% exit 100%;
+      }
     }
   }
 
   /* ── Timeline: dot lights up when its step is revealed; line fills on scroll ── */
   .imt-timeline-dot {
-    transition: background-color 400ms ease, border-color 400ms ease, color 400ms ease;
+    transition:
+      background-color 500ms ease-out,
+      border-color 500ms ease-out,
+      color 500ms ease-out,
+      box-shadow 700ms var(--imt-ease-out);
   }
   [data-revealed="true"] > .imt-timeline-dot {
     border-color: var(--accent);
@@ -470,7 +515,7 @@
     z-index: -1;
     transform: translateX(-120%) skewX(-20deg);
     background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
-    transition: transform 700ms ease;
+    transition: transform 800ms var(--imt-ease-out);
   }
   .imt-btn-primary:hover::after {
     transform: translateX(120%) skewX(-20deg);
@@ -529,17 +574,36 @@
     height: 38px;
     margin: -19px 0 0 -19px;
     border: 1.5px solid rgba(163, 230, 53, 0.7);
+    /* `scale` composes with the inline translate: compositor-only, no layout. */
     transition:
-      width 200ms ease,
-      height 200ms ease,
-      margin 200ms ease,
-      background-color 200ms ease;
+      scale var(--imt-dur-base) var(--imt-ease-out),
+      opacity var(--imt-dur-base) ease-out,
+      background-color var(--imt-dur-base) ease-out,
+      border-color var(--imt-dur-base) ease-out;
+  }
+  .imt-cursor-dot {
+    transition:
+      opacity var(--imt-dur-base) ease-out,
+      scale var(--imt-dur-base) var(--imt-ease-out);
   }
   .imt-cursor-ring[data-hover="true"] {
-    width: 64px;
-    height: 64px;
-    margin: -32px 0 0 -32px;
+    scale: 1.7;
+    border-color: rgba(163, 230, 53, 0.9);
     background-color: rgba(163, 230, 53, 0.1);
+  }
+  /* Over text fields the ring shrinks and fades so the caret stays clear. */
+  .imt-cursor-ring[data-hover="text"] {
+    scale: 0.5;
+    border-color: rgba(163, 230, 53, 0.35);
+  }
+  .imt-cursor-ring[data-hover="text"] + .imt-cursor-dot {
+    scale: 0;
+  }
+  .imt-cursor-ring[data-pressed="true"] {
+    scale: 0.8;
+  }
+  .imt-cursor-ring[data-hover="true"][data-pressed="true"] {
+    scale: 1.45;
   }
 
   /* ── Floating chips around the hero image ── */
@@ -567,7 +631,7 @@
   }
   .imt-flip-inner {
     transform-style: preserve-3d;
-    transition: transform 950ms cubic-bezier(0.22, 1, 0.36, 1);
+    transition: transform 950ms var(--imt-ease-out);
   }
   .imt-flip[data-flipped="true"] .imt-flip-inner {
     transform: rotateY(180deg);
@@ -601,7 +665,9 @@
     font-size: 0.9rem;
     font-weight: 600;
     color: var(--text-muted);
-    transition: background-color 200ms ease, color 200ms ease;
+    transition:
+      background-color 260ms ease-out,
+      color 260ms ease-out;
   }
   .imt-segment button:hover {
     color: var(--text);
@@ -614,7 +680,11 @@
 }
 
 @layer components {
-  /* ── Route transition (RouteTransition): circle wipe + spinning ring ── */
+  /* ── Route transition (RouteTransition) ──────────────────
+     A lime wave grows from the clicked point, a dark veil follows it (so
+     the lime reads as a rim), the brand glyph draws inside a rotating dash
+     ring while a light streak crosses, then the curtain fades out.
+     Timeline (ms): wave 0–420 · veil 70–490 · mark 280–700 · out 560–900. */
   .imt-route-curtain {
     position: fixed;
     inset: 0;
@@ -622,45 +692,172 @@
     pointer-events: none;
     display: grid;
     place-items: center;
+    overflow: hidden;
+    contain: strict;
+    animation: imt-route-out 900ms linear both;
+  }
+  .imt-route-wave,
+  .imt-route-veil {
+    position: absolute;
+    inset: 0;
+    clip-path: circle(0px at var(--route-x, 50%) var(--route-y, 50%));
+    animation: imt-route-wipe 420ms var(--imt-ease-in-out) both;
+  }
+  .imt-route-wave {
     background: var(--accent);
-    clip-path: circle(0% at 50% 50%);
-    animation: imt-curtain 900ms cubic-bezier(0.65, 0, 0.35, 1) both;
+  }
+  .imt-route-veil {
+    background: var(--bg);
+    animation-delay: 70ms;
+  }
+  .imt-route-streak {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 42vw;
+    height: 2px;
+    margin-top: -1px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, transparent, var(--accent) 75%, var(--glow));
+    box-shadow: 0 0 18px rgba(163, 230, 53, 0.6);
+    opacity: 0;
+    animation: imt-route-streak 560ms var(--imt-ease-out) 300ms both;
+  }
+  .imt-route-mark {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 104px;
+    height: 104px;
+    animation: imt-route-mark 900ms var(--imt-ease-out) both;
   }
   .imt-route-ring {
-    width: 72px;
-    height: 72px;
-    border-radius: 999px;
-    border: 3px dashed var(--bg);
-    animation: imt-ring-spin 900ms linear both;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    animation: imt-ring-spin 900ms var(--imt-ease-out) both;
+  }
+  .imt-route-track {
+    fill: none;
+    stroke: var(--border-solid);
+    stroke-width: 2;
+  }
+  .imt-route-dash {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-dasharray: 26 74;
+  }
+  .imt-route-dots {
+    fill: none;
+    stroke: var(--glow);
+    stroke-opacity: 0.45;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-dasharray: 0.5 4.5;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: imt-ring-spin-rev 900ms linear both;
+  }
+  .imt-route-glyph {
+    width: 40px;
+    height: 40px;
+    overflow: visible;
+  }
+  .imt-route-glyph path {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: imt-draw 420ms var(--imt-ease-in-out) 320ms forwards;
+  }
+  .imt-route-glyph circle {
+    fill: var(--accent);
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: imt-route-pop 280ms cubic-bezier(0.34, 1.56, 0.64, 1) 600ms both;
   }
   .imt-route-enter {
-    /* Opacity only: a transform here would break position: sticky inside. */
-    animation: imt-route-in 600ms ease 420ms both;
+    /* Opacity only, and `backwards` fill: once finished nothing stays
+       applied, so no transform / stacking context breaks position: sticky. */
+    animation: imt-route-in 420ms var(--imt-ease-out) 520ms backwards;
   }
 }
 
-@keyframes imt-curtain {
-  0% {
-    clip-path: circle(0% at 50% 50%);
+@keyframes imt-route-wipe {
+  from {
+    clip-path: circle(0px at var(--route-x, 50%) var(--route-y, 50%));
   }
-  45%,
-  55% {
-    clip-path: circle(75% at 50% 50%);
+  to {
+    clip-path: circle(var(--route-r, 150vmax) at var(--route-x, 50%) var(--route-y, 50%));
+  }
+}
+@keyframes imt-route-out {
+  0%,
+  62% {
+    opacity: 1;
+    visibility: visible;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   }
   100% {
-    clip-path: circle(0% at 50% 50%);
     opacity: 0;
+    visibility: hidden;
+  }
+}
+@keyframes imt-route-mark {
+  0%,
+  30% {
+    opacity: 0;
+    transform: scale(0.82);
+  }
+  48%,
+  72% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.06);
   }
 }
 @keyframes imt-ring-spin {
-  0% {
-    transform: rotate(0deg) scale(0.6);
+  from {
+    transform: rotate(-90deg);
   }
-  50% {
-    transform: rotate(270deg) scale(1);
+  to {
+    transform: rotate(420deg);
+  }
+}
+@keyframes imt-ring-spin-rev {
+  to {
+    transform: rotate(-180deg);
+  }
+}
+@keyframes imt-route-streak {
+  0% {
+    opacity: 0;
+    transform: translateX(-42vw) scaleX(0.4);
+  }
+  25% {
+    opacity: 1;
   }
   100% {
-    transform: rotate(540deg) scale(0.6);
+    opacity: 0;
+    transform: translateX(100vw) scaleX(1);
+  }
+}
+@keyframes imt-route-pop {
+  from {
+    transform: scale(0);
+  }
+  to {
+    transform: scale(1);
   }
 }
 @keyframes imt-route-in {
@@ -730,12 +927,27 @@
   .imt-divider-trace {
     stroke-dashoffset: 0;
   }
-  .imt-route-curtain {
+  /* Route transition, gentle: a soft veil fade with the static glyph. */
+  .imt-route-wave,
+  .imt-route-streak {
     display: none;
   }
+  .imt-route-veil {
+    clip-path: none;
+    animation: imt-route-in 240ms ease-out both;
+  }
+  .imt-route-mark,
+  .imt-route-ring,
+  .imt-route-dots {
+    animation-name: imt-route-in;
+  }
+  .imt-route-glyph path {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
   .imt-route-enter {
-    animation-duration: 300ms;
-    animation-delay: 0ms;
+    animation-duration: 360ms;
+    animation-delay: 440ms;
   }
   [data-tilt] {
     transform: none !important;

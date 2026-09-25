@@ -4,39 +4,79 @@ import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 
 /*
- * Interactive background that explains the product: "operar vs. escalar".
+ * Interactive background that explains the product: "operar vs. escalar",
+ * set inside a slowly turning galaxy.
  *
  * - Top of the page: nodes are scattered and drifting (manual, chaotic ops).
- * - Scrolling orders them into a circuit grid and data packets start flowing
+ * - Scrolling orders them into a circuit and data packets start flowing
  *   along it (systems). A small HUD shows the OPERAR → ESCALAR progress.
+ * - Further down, the circuit twists into spiral arms around a galaxy whose
+ *   core wanders with the scroll, so the page never settles into a static grid.
  * - Pointer (mouse or finger) connects nearby nodes and pushes them aside;
  *   click / tap sends a ripple that fires packets from that point.
  *
- * Plain Canvas 2D, no dependencies. Static single frame with
- * prefers-reduced-motion and on routes listed in STATIC_ROUTES.
+ * Performance: plain Canvas 2D, no dependencies. Draw calls are batched by
+ * alpha bucket, gradients are pre-rendered sprites and no strings or arrays
+ * are allocated per frame. Phones / touch run a lite mode (fewer elements,
+ * DPR 1, ~30 fps) and slow desktops degrade to 30 fps automatically. The loop
+ * pauses while the tab is hidden. prefers-reduced-motion runs a gentle mode
+ * (slower, softer) instead of freezing, because many Windows PCs report it
+ * just because "animation effects" is off. Routes in STATIC_ROUTES get one
+ * static frame. If Canvas 2D is unavailable a CSS gradient stands in.
  */
 
 const STATIC_ROUTES = ["/diagnostico"];
-const ACCENT = "163,230,53";
+const LIME = "#A3E635";
+const GREEN = "#22C55E";
 const HEAD = "#BEF264";
+const PALE = "#F7FEE7";
+const TAU = Math.PI * 2;
+/** Alpha levels used to batch strokes/fills into a few draw calls. */
+const BUCKETS = 12;
+const SKIP = 255;
 
-type SysNode = {
-  ox: number; // ordered (grid) position
-  oy: number;
-  cx: number; // chaotic position
-  cy: number;
-  phase: number;
-  x: number;
-  y: number;
-  glow: number;
-};
-
-type Packet = { from: number; to: number; t: number; speed: number };
 type Star = { x: number; y: number; z: number; size: number; phase: number; lime: boolean };
+type Dust = { t: number; arm: number; jx: number; jy: number; size: number; phase: number; hue: 0 | 1 | 2 };
+type Packet = { from: number; to: number; t: number; speed: number };
 type Ripple = { x: number; y: number; r: number; life: number };
 
 function easeInOut(t: number) {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+function smoothstep(edge0: number, edge1: number, x: number) {
+  const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));
+  return t * t * (3 - 2 * t);
+}
+
+/** Squared mapping gives finer alpha steps where faint lines live. */
+function toBucket(alpha: number) {
+  if (alpha < 0.012) return SKIP;
+  return Math.min(BUCKETS - 1, Math.floor(Math.sqrt(Math.min(alpha, 1)) * BUCKETS));
+}
+function bucketAlpha(bucket: number) {
+  const v = (bucket + 0.5) / BUCKETS;
+  return v * v;
+}
+
+/** Pre-renders a radial glow once; drawing it later is a cheap drawImage. */
+function makeGlowSprite(size: number, color: string, stops: Array<[number, number]>) {
+  const sprite = document.createElement("canvas");
+  sprite.width = size;
+  sprite.height = size;
+  const sctx = sprite.getContext("2d");
+  if (!sctx) return null;
+  const half = size / 2;
+  const gradient = sctx.createRadialGradient(half, half, 0, half, half, half);
+  for (const [offset, alpha] of stops) gradient.addColorStop(offset, hexToRgba(color, alpha));
+  sctx.fillStyle = gradient;
+  sctx.fillRect(0, 0, size, size);
+  return sprite;
+}
+
+function hexToRgba(hex: string, alpha: number) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
 }
 
 export function SystemsCanvas() {
@@ -48,12 +88,23 @@ export function SystemsCanvas() {
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return;
+    if (!canvas) return;
+    let context: CanvasRenderingContext2D | null = null;
+    try {
+      context = canvas.getContext("2d", { alpha: true });
+    } catch {
+      context = null;
+    }
+    if (!context) {
+      // No Canvas 2D (blocked, old browser, GPU blacklisted): static CSS galaxy.
+      canvas.dataset.fallback = "true";
+      return;
+    }
+    const ctx = context;
+    delete canvas.dataset.fallback;
 
-    // Many Windows PCs report reduced motion just because "animation effects"
-    // is off. Instead of freezing, run a gentle mode: slow drift, no ripples.
     const gentle = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const coarse = window.matchMedia("(pointer: coarse)");
     const animate = !isStaticRoute;
     const speed = gentle ? 0.35 : 1;
 
@@ -62,79 +113,160 @@ export function SystemsCanvas() {
     let spacing = 96;
     let cols = 0;
     let rows = 0;
-    let nodes: SysNode[] = [];
-    // Which grid edges are circuit traces (the rest fade out once ordered).
-    let traceRight = new Uint8Array(0);
-    let traceDown = new Uint8Array(0);
-    let degree = new Uint8Array(0);
-    let packets: Packet[] = [];
-    let ripples: Ripple[] = [];
-    let progress = animate ? 0 : 0.85;
-    let target = progress;
-    let scrollBoost = 0;
-    let lastScroll = window.scrollY;
-    let maxPackets = 18;
-    let frame = 0;
-    let lastHud = -1;
-    let stars: Star[] = [];
-    let lite = false; // phones / touch: fewer elements, 30 fps, 1x resolution
-    let lastDraw = 0;
+    let count = 0;
     let centerX = 0;
     let centerY = 0;
-    const pointer = { x: -9999, y: -9999, active: false };
+    let lite = false;
 
-    // Deterministic pseudo-random so the "chaos" layout is stable across resizes.
+    // Node data in typed arrays: no per-frame object churn.
+    let ox = new Float32Array(0); // ordered (grid) position
+    let oy = new Float32Array(0);
+    let cx = new Float32Array(0); // chaotic position
+    let cy = new Float32Array(0);
+    let phase = new Float32Array(0);
+    let swirlW = new Float32Array(0); // how much the galaxy twist affects the node
+    let nx = new Float32Array(0); // current screen position
+    let ny = new Float32Array(0);
+    let glow = new Float32Array(0);
+    let wave = new Float32Array(0);
+    let degree = new Uint8Array(0);
+    let nodeBucket = new Uint8Array(0);
+    let padBucket = new Uint8Array(0);
+    let traceRight = new Uint8Array(0);
+    let traceDown = new Uint8Array(0);
+    // Links (right + down neighbours), precomputed once per layout.
+    let linkA = new Int32Array(0);
+    let linkB = new Int32Array(0);
+    let linkTrace = new Uint8Array(0);
+    let linkBucket = new Uint8Array(0);
+    const bucketCount = new Uint16Array(BUCKETS * 2);
+    const scratchAll = new Int32Array(4);
+    const scratchTrace = new Int32Array(4);
+
+    let stars: Star[] = [];
+    let dust: Dust[] = [];
+    const packets: Packet[] = [];
+    const ripples: Ripple[] = [];
+    let maxPackets = 18;
+
+    let nebulaSprite: HTMLCanvasElement | null = null;
+    let greenSprite: HTMLCanvasElement | null = null;
+    let coreSprite: HTMLCanvasElement | null = null;
+    let packetSprite: HTMLCanvasElement | null = null;
+    let spotSprite: HTMLCanvasElement | null = null;
+
+    let progress = animate ? 0 : 0.85;
+    let target = progress;
+    let smoothScroll = window.scrollY;
+    let scrollBoost = 0;
+    let lastScroll = window.scrollY;
+    let frame = 0;
+    let lastHud = -1;
+    let lastTime = 0;
+    let lastDraw = 0;
+    // Adaptive frame budget: 0 = every frame, 33 = ~30 fps.
+    let budget = 0;
+    let slowFrames = 0;
+    let sampledFrames = 0;
+    const pointer = { x: -9999, y: -9999, active: false, touchUntil: 0 };
+
+    // Deterministic pseudo-random so the layout is stable across resizes.
     let seed = 7;
     const rand = () => {
       seed = (seed * 16807) % 2147483647;
       return (seed - 1) / 2147483646;
     };
 
+    const buildSprites = () => {
+      if (nebulaSprite) return;
+      nebulaSprite = makeGlowSprite(256, LIME, [
+        [0, 0.12],
+        [0.35, 0.05],
+        [1, 0],
+      ]);
+      greenSprite = makeGlowSprite(256, GREEN, [
+        [0, 0.08],
+        [1, 0],
+      ]);
+      coreSprite = makeGlowSprite(128, HEAD, [
+        [0, 0.55],
+        [0.25, 0.16],
+        [1, 0],
+      ]);
+      packetSprite = makeGlowSprite(32, LIME, [
+        [0, 0.4],
+        [1, 0],
+      ]);
+      spotSprite = makeGlowSprite(256, LIME, [
+        [0, 0.16],
+        [1, 0],
+      ]);
+    };
+
     const build = () => {
       width = window.innerWidth;
       height = window.innerHeight;
-      lite = width < 768 || window.matchMedia("(pointer: coarse)").matches;
+      lite = width < 768 || coarse.matches;
+      budget = lite ? 33 : 0;
+      slowFrames = 0;
+      sampledFrames = 0;
       const dpr = lite ? 1 : Math.min(window.devicePixelRatio || 1, 1.5);
       canvas.width = Math.round(width * dpr);
       canvas.height = Math.round(height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      spacing = lite ? 84 : width < 1024 ? 84 : 96;
+      spacing = lite ? 92 : width < 1024 ? 84 : 96;
       maxPackets = lite ? 7 : 18;
       centerX = width / 2;
       centerY = height / 2;
-      // Cover the screen diagonal so the slow rotation never shows empty corners.
+      // Cover the screen diagonal so the rotation never shows empty corners.
       const side = Math.hypot(width, height) + spacing * 2;
       cols = Math.ceil(side / spacing) + 1;
       rows = cols;
+      count = cols * rows;
       const offsetX = centerX - ((cols - 1) * spacing) / 2;
       const offsetY = centerY - ((rows - 1) * spacing) / 2;
+      const maxR = Math.hypot(((cols - 1) * spacing) / 2, ((rows - 1) * spacing) / 2) || 1;
+
+      ox = new Float32Array(count);
+      oy = new Float32Array(count);
+      cx = new Float32Array(count);
+      cy = new Float32Array(count);
+      phase = new Float32Array(count);
+      swirlW = new Float32Array(count);
+      nx = new Float32Array(count);
+      ny = new Float32Array(count);
+      glow = new Float32Array(count);
+      wave = new Float32Array(count);
+      degree = new Uint8Array(count);
+      nodeBucket = new Uint8Array(count);
+      padBucket = new Uint8Array(count);
+      traceRight = new Uint8Array(count);
+      traceDown = new Uint8Array(count);
 
       seed = 7;
-      nodes = [];
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
-          const ox = offsetX + c * spacing;
-          const oy = offsetY + r * spacing;
-          const angle = rand() * Math.PI * 2;
+          const i = r * cols + c;
+          const x = offsetX + c * spacing;
+          const y = offsetY + r * spacing;
+          const angle = rand() * TAU;
           const dist = spacing * (0.5 + rand() * 1.6);
-          nodes.push({
-            ox,
-            oy,
-            cx: ox + Math.cos(angle) * dist,
-            cy: oy + Math.sin(angle) * dist,
-            phase: rand() * Math.PI * 2,
-            x: ox,
-            y: oy,
-            glow: 0,
-          });
+          ox[i] = x;
+          oy[i] = y;
+          cx[i] = x + Math.cos(angle) * dist;
+          cy[i] = y + Math.sin(angle) * dist;
+          phase[i] = rand() * TAU;
+          nx[i] = x;
+          ny[i] = y;
+          // Inner nodes turn more than outer ones: a grid becomes spiral arms.
+          const rn = Math.hypot(x - centerX, y - centerY) / maxR;
+          swirlW[i] = Math.pow(1 - Math.min(1, rn), 1.6);
         }
       }
+
       // Traces: biased random runs so they read as circuit tracks, not a grid.
-      traceRight = new Uint8Array(nodes.length);
-      traceDown = new Uint8Array(nodes.length);
-      degree = new Uint8Array(nodes.length);
-      for (let i = 0; i < nodes.length; i++) {
+      for (let i = 0; i < count; i++) {
         const c = i % cols;
         const r = Math.floor(i / cols);
         if (c < cols - 1) {
@@ -146,28 +278,67 @@ export function SystemsCanvas() {
           traceDown[i] = rand() < (run ? 0.55 : 0.2) ? 1 : 0;
         }
       }
-      for (let i = 0; i < nodes.length; i++) {
-        if (traceRight[i]) {
-          degree[i]++;
-          degree[i + 1]++;
+      let links = 0;
+      for (let i = 0; i < count; i++) {
+        if (i % cols < cols - 1) links++;
+        if (i + cols < count) links++;
+      }
+      linkA = new Int32Array(links);
+      linkB = new Int32Array(links);
+      linkTrace = new Uint8Array(links);
+      linkBucket = new Uint8Array(links);
+      let k = 0;
+      for (let i = 0; i < count; i++) {
+        if (i % cols < cols - 1) {
+          linkA[k] = i;
+          linkB[k] = i + 1;
+          linkTrace[k] = traceRight[i];
+          if (traceRight[i]) {
+            degree[i]++;
+            degree[i + 1]++;
+          }
+          k++;
         }
-        if (traceDown[i]) {
-          degree[i]++;
-          degree[i + cols]++;
+        if (i + cols < count) {
+          linkA[k] = i;
+          linkB[k] = i + cols;
+          linkTrace[k] = traceDown[i];
+          if (traceDown[i]) {
+            degree[i]++;
+            degree[i + cols]++;
+          }
+          k++;
         }
       }
-      packets = [];
+      packets.length = 0;
 
-      // Starfield in three depths (drawn behind the circuit).
-      const count = lite ? 70 : 170;
-      stars = Array.from({ length: count }, () => ({
+      // Starfield in three depths (drawn behind everything).
+      const starCount = lite ? 70 : 170;
+      stars = Array.from({ length: starCount }, () => ({
         x: rand() * width,
         y: rand() * height,
         z: 0.25 + rand() * 0.75,
         size: rand() < 0.12 ? 2 : 1,
-        phase: rand() * Math.PI * 2,
+        phase: rand() * TAU,
         lime: rand() < 0.25,
       }));
+
+      // Galaxy dust along two logarithmic-looking spiral arms.
+      const dustCount = lite ? 110 : 300;
+      dust = Array.from({ length: dustCount }, () => {
+        const t = Math.pow(rand(), 0.7);
+        const roll = rand();
+        return {
+          t,
+          arm: rand() < 0.5 ? 0 : 1,
+          jx: (rand() - 0.5) * 2,
+          jy: (rand() - 0.5) * 2,
+          size: rand() < 0.1 ? 2 : 1,
+          phase: rand() * TAU,
+          hue: roll < 0.45 ? 0 : roll < 0.7 ? 1 : 2,
+        };
+      });
+      buildSprites();
     };
 
     const isTrace = (a: number, b: number) => {
@@ -178,45 +349,47 @@ export function SystemsCanvas() {
       return false;
     };
 
-    const neighbors = (i: number) => {
+    /** Random next hop from node i (no U-turn to `exclude`); -1 if stuck. */
+    const pickNext = (i: number, exclude: number) => {
       const c = i % cols;
       const r = Math.floor(i / cols);
-      const list: number[] = [];
-      if (c > 0) list.push(i - 1);
-      if (c < cols - 1) list.push(i + 1);
-      if (r > 0) list.push(i - cols);
-      if (r < rows - 1) list.push(i + cols);
-      return list;
-    };
-
-    const traceNeighbors = (i: number) => {
-      const all = neighbors(i);
-      if (progress < 0.5) return all;
-      const traces = all.filter((n) => isTrace(i, n));
-      return traces.length ? traces : all;
+      let all = 0;
+      let traces = 0;
+      const consider = (n: number) => {
+        if (n === exclude) return;
+        scratchAll[all++] = n;
+        if (isTrace(i, n)) scratchTrace[traces++] = n;
+      };
+      if (c > 0) consider(i - 1);
+      if (c < cols - 1) consider(i + 1);
+      if (r > 0) consider(i - cols);
+      if (r < rows - 1) consider(i + cols);
+      if (progress >= 0.5 && traces > 0) return scratchTrace[Math.floor(Math.random() * traces)];
+      if (all === 0) return -1;
+      return scratchAll[Math.floor(Math.random() * all)];
     };
 
     const spawnPacket = (from?: number) => {
-      let start = from ?? Math.floor(Math.random() * nodes.length);
+      if (!count) return;
+      let start = from ?? Math.floor(Math.random() * count);
       if (from === undefined && progress >= 0.5) {
-        for (let k = 0; k < 12 && degree[start] === 0; k++) start = Math.floor(Math.random() * nodes.length);
+        for (let k = 0; k < 12 && degree[start] === 0; k++) start = Math.floor(Math.random() * count);
       }
-      const options = traceNeighbors(start);
-      const to = options[Math.floor(Math.random() * options.length)];
-      if (to === undefined) return;
+      const to = pickNext(start, -1);
+      if (to < 0) return;
       packets.push({ from: start, to, t: 0, speed: 0.012 + Math.random() * 0.018 });
     };
 
     const nearestNode = (x: number, y: number) => {
       let best = 0;
       let bestDist = Infinity;
-      nodes.forEach((n, i) => {
-        const d = (n.x - x) ** 2 + (n.y - y) ** 2;
+      for (let i = 0; i < count; i++) {
+        const d = (nx[i] - x) ** 2 + (ny[i] - y) ** 2;
         if (d < bestDist) {
           bestDist = d;
           best = i;
         }
-      });
+      }
       return best;
     };
 
@@ -230,159 +403,264 @@ export function SystemsCanvas() {
 
     const draw = (time: number) => {
       ctx.clearRect(0, 0, width, height);
+      ctx.globalAlpha = 1;
       const p = easeInOut(progress);
-      const scroll = window.scrollY;
+      const scroll = smoothScroll;
+      const depth = scroll / Math.max(1, height); // viewports scrolled
+      const deep = smoothstep(0.9, 2.6, depth);
+      const tSlow = time * speed;
 
-      // Nebula: a single soft glow that drifts as you scroll.
-      const nx = width * (0.5 + 0.32 * Math.sin(scroll * 0.0005));
-      const ny = height * (0.42 + 0.22 * Math.cos(scroll * 0.00037));
-      const nr = Math.max(width, height) * 0.62;
-      const nebula = ctx.createRadialGradient(nx, ny, 0, nx, ny, nr);
-      nebula.addColorStop(0, `rgba(${ACCENT},0.075)`);
-      nebula.addColorStop(1, `rgba(${ACCENT},0)`);
-      ctx.fillStyle = nebula;
-      ctx.fillRect(0, 0, width, height);
-
-      // Stars: parallax with scroll (deeper = slower) and a soft twinkle.
-      for (const st of stars) {
-        let y = (st.y - scroll * st.z * 0.35) % height;
-        if (y < 0) y += height;
-        const tw = 0.35 + 0.65 * Math.abs(Math.sin(time * 0.0008 * speed + st.phase));
-        const a = (0.25 + 0.55 * st.z) * tw;
-        ctx.fillStyle = st.lime ? `rgba(${ACCENT},${a.toFixed(3)})` : `rgba(247,254,231,${(a * 0.8).toFixed(3)})`;
-        ctx.fillRect(st.x, y, st.size, st.size);
+      // ── Galaxy core + nebula: wanders across the screen with the scroll ──
+      const gx = width * (0.5 + 0.3 * Math.sin(depth * 0.55 + 0.6));
+      const gy = height * (0.46 + 0.2 * Math.cos(depth * 0.43));
+      const galaxyR = Math.max(width, height) * (lite ? 0.5 : 0.42);
+      const galaxyVis = 0.55 + 0.45 * smoothstep(0, 1.5, depth);
+      if (nebulaSprite) {
+        const nr = Math.max(width, height) * 0.7;
+        ctx.globalAlpha = 0.9;
+        ctx.drawImage(nebulaSprite, gx - nr, gy - nr, nr * 2, nr * 2);
+      }
+      if (greenSprite) {
+        const gr = Math.max(width, height) * 0.45;
+        const ax = width - gx * 0.6;
+        const ay = height * (0.7 - 0.25 * Math.sin(depth * 0.37));
+        ctx.globalAlpha = 0.8;
+        ctx.drawImage(greenSprite, ax - gr, ay - gr, gr * 2, gr * 2);
+      }
+      if (coreSprite) {
+        const cr = galaxyR * 0.28 * (0.92 + 0.08 * Math.sin(tSlow * 0.0011));
+        ctx.globalAlpha = galaxyVis * 0.75;
+        ctx.drawImage(coreSprite, gx - cr, gy - cr, cr * 2, cr * 2);
       }
 
-      // The whole circuit turns slowly with the scroll, like a galaxy.
-      const angle = scroll * 0.00016;
+      // ── Stars: parallax with scroll (deeper = slower) and a soft twinkle ──
+      for (let pass = 0; pass < 2; pass++) {
+        ctx.fillStyle = pass === 0 ? LIME : PALE;
+        for (const st of stars) {
+          if (st.lime !== (pass === 0)) continue;
+          let y = (st.y - scroll * st.z * 0.35) % height;
+          if (y < 0) y += height;
+          const tw = 0.35 + 0.65 * Math.abs(Math.sin(tSlow * 0.0008 + st.phase));
+          ctx.globalAlpha = (0.25 + 0.55 * st.z) * tw * (pass === 0 ? 1 : 0.8);
+          ctx.fillRect(st.x, y, st.size, st.size);
+        }
+      }
+
+      // ── Galaxy dust: two spiral arms, inner parts turn faster ──
+      const spin = tSlow * 0.00004 + scroll * 0.00035;
+      const tilt = -0.5 + depth * 0.12;
+      const tc = Math.cos(tilt);
+      const ts = Math.sin(tilt);
+      for (let hue = 0; hue < 3; hue++) {
+        ctx.fillStyle = hue === 0 ? LIME : hue === 1 ? GREEN : PALE;
+        for (const d of dust) {
+          if (d.hue !== hue) continue;
+          const r = d.t * galaxyR;
+          const theta = d.arm * Math.PI + d.t * 5 + spin * (1.8 - d.t);
+          const spread = 6 + r * 0.14;
+          const lx = Math.cos(theta) * r + d.jx * spread;
+          const ly = (Math.sin(theta) * r + d.jy * spread) * 0.5;
+          const x = gx + lx * tc - ly * ts;
+          const y = gy + lx * ts + ly * tc;
+          if (x < -4 || y < -4 || x > width + 4 || y > height + 4) continue;
+          const tw = 0.55 + 0.45 * Math.sin(tSlow * 0.0015 + d.phase);
+          ctx.globalAlpha = (1 - d.t * 0.75) * tw * 0.75 * galaxyVis;
+          ctx.fillRect(x, y, d.size, d.size);
+        }
+      }
+
+      // ── Circuit positions: chaos → order, then twisted by the galaxy ──
+      const angle = scroll * 0.00016 + tSlow * 0.000012;
+      const swirl = deep * (0.55 + 0.35 * Math.sin(depth * 0.8)) * 1.1;
       const cosA = Math.cos(angle);
       const sinA = Math.sin(angle);
       const drift = 1 - p;
       const radius = width < 640 ? 110 : 170;
+      const circuitAlpha = 1 - 0.3 * deep;
+      const wob1 = tSlow * 0.0007;
+      const wob2 = tSlow * 0.0006;
+      const waveT = tSlow * 0.0012;
 
-      // Positions: chaos → order, plus drift and pointer repulsion.
-      for (const n of nodes) {
-        const wobX = Math.sin(time * 0.0007 * speed + n.phase) * 18 * drift;
-        const wobY = Math.cos(time * 0.0006 * speed + n.phase) * 18 * drift;
-        const px = n.cx + wobX + (n.ox - n.cx - wobX) * p - centerX;
-        const py = n.cy + wobY + (n.oy - n.cy - wobY) * p - centerY;
-        let x = centerX + px * cosA - py * sinA;
-        let y = centerY + px * sinA + py * cosA;
+      for (let i = 0; i < count; i++) {
+        let bx: number;
+        let by: number;
+        if (drift > 0.001) {
+          const wx = Math.sin(wob1 + phase[i]) * 18 * drift;
+          const wy = Math.cos(wob2 + phase[i]) * 18 * drift;
+          bx = cx[i] + wx + (ox[i] - cx[i] - wx) * p - centerX;
+          by = cy[i] + wy + (oy[i] - cy[i] - wy) * p - centerY;
+        } else {
+          bx = ox[i] - centerX;
+          by = oy[i] - centerY;
+        }
+        let c = cosA;
+        let s = sinA;
+        if (swirl > 0.001) {
+          const a = angle + swirl * swirlW[i];
+          c = Math.cos(a);
+          s = Math.sin(a);
+        }
+        let x = centerX + bx * c - by * s;
+        let y = centerY + bx * s + by * c;
         if (pointer.active) {
           const dx = x - pointer.x;
           const dy = y - pointer.y;
-          const d = Math.hypot(dx, dy) || 1;
+          const d = Math.sqrt(dx * dx + dy * dy) || 1;
           if (d < radius) {
             const f = 1 - d / radius;
             x += (dx / d) * f * 16;
             y += (dy / d) * f * 16;
-            n.glow = Math.max(n.glow, f);
+            if (f > glow[i]) glow[i] = f;
           }
         }
-        n.x = x;
-        n.y = y;
-        n.glow *= 0.94;
+        nx[i] = x;
+        ny[i] = y;
+        glow[i] *= 0.94;
+        wave[i] = Math.pow(0.5 + 0.5 * Math.sin((ox[i] + oy[i]) * 0.0045 - waveT), 3);
       }
 
-      // Links between grid neighbours: faint and tangled in chaos, clean in order.
-      ctx.lineWidth = 1;
-      for (let i = 0; i < nodes.length; i++) {
-        const a = nodes[i];
-        const c = i % cols;
-        const pairs = [c < cols - 1 ? i + 1 : -1, i + cols < nodes.length ? i + cols : -1];
-        for (const j of pairs) {
-          if (j < 0) continue;
-          const b = nodes[j];
-          const dist = Math.hypot(a.x - b.x, a.y - b.y);
-          // Chaos: short tangled links. Order: circuit traces with a light wave.
+      // ── Links: faint and tangled in chaos, clean circuit traces in order ──
+      bucketCount.fill(0);
+      const wideTraces = p > 0.5;
+      for (let k = 0; k < linkA.length; k++) {
+        const a = linkA[k];
+        const b = linkB[k];
+        const trace = linkTrace[k] === 1;
+        let chaosPart = 0;
+        if (drift > 0.01) {
+          const dx = nx[a] - nx[b];
+          const dy = ny[a] - ny[b];
+          const dist = Math.sqrt(dx * dx + dy * dy);
           const tidy = Math.min(1, Math.max(0, (2.6 * spacing - dist) / (1.6 * spacing)));
-          const trace = isTrace(i, j);
-          const wave = Math.pow(0.5 + 0.5 * Math.sin((a.ox + a.oy) * 0.0045 - time * 0.0012 * speed), 3);
-          const ordered = trace ? 0.26 + 0.34 * wave : 0.02;
-          const alpha = 0.12 * (1 - p) * tidy + ordered * p + 0.6 * Math.max(a.glow, b.glow);
-          ctx.lineWidth = trace && p > 0.5 ? 1.4 : 1;
-          if (alpha < 0.015) continue;
-          ctx.strokeStyle = `rgba(${ACCENT},${alpha.toFixed(3)})`;
-          ctx.beginPath();
-          ctx.moveTo(a.x, a.y);
-          ctx.lineTo(b.x, b.y);
-          ctx.stroke();
+          chaosPart = 0.12 * drift * tidy;
         }
+        const ordered = trace ? 0.26 + 0.34 * wave[a] : 0.008;
+        const g = glow[a] > glow[b] ? glow[a] : glow[b];
+        const bucket = toBucket((chaosPart + ordered * p) * circuitAlpha + 0.6 * g);
+        if (bucket === SKIP) {
+          linkBucket[k] = SKIP;
+          continue;
+        }
+        const slot = trace && wideTraces ? bucket + BUCKETS : bucket;
+        linkBucket[k] = slot;
+        bucketCount[slot]++;
       }
-
-      // Pointer spotlight (one translucent layer on a transparent canvas).
-      if (pointer.active && !lite) {
-        const spot = ctx.createRadialGradient(pointer.x, pointer.y, 0, pointer.x, pointer.y, radius * 1.6);
-        spot.addColorStop(0, `rgba(${ACCENT},0.16)`);
-        spot.addColorStop(1, `rgba(${ACCENT},0)`);
-        ctx.fillStyle = spot;
-        ctx.fillRect(pointer.x - radius * 1.6, pointer.y - radius * 1.6, radius * 3.2, radius * 3.2);
+      ctx.strokeStyle = LIME;
+      for (let slot = 0; slot < BUCKETS * 2; slot++) {
+        if (!bucketCount[slot]) continue;
+        ctx.globalAlpha = bucketAlpha(slot % BUCKETS);
+        ctx.lineWidth = slot >= BUCKETS ? 1.4 : 1;
+        ctx.beginPath();
+        for (let k = 0; k < linkA.length; k++) {
+          if (linkBucket[k] !== slot) continue;
+          ctx.moveTo(nx[linkA[k]], ny[linkA[k]]);
+          ctx.lineTo(nx[linkB[k]], ny[linkB[k]]);
+        }
+        ctx.stroke();
       }
+      ctx.lineWidth = 1;
 
-      // Pointer "connects" the nodes around it.
+      // ── Pointer spotlight + the lines that "connect" nodes to it ──
       if (pointer.active) {
-        for (const n of nodes) {
-          const d = Math.hypot(n.x - pointer.x, n.y - pointer.y);
+        if (!lite && spotSprite) {
+          const sr = radius * 1.6;
+          ctx.globalAlpha = 1;
+          ctx.drawImage(spotSprite, pointer.x - sr, pointer.y - sr, sr * 2, sr * 2);
+        }
+        for (let i = 0; i < count; i++) {
+          const dx = nx[i] - pointer.x;
+          const dy = ny[i] - pointer.y;
+          const d = Math.sqrt(dx * dx + dy * dy);
           if (d > radius) continue;
-          ctx.strokeStyle = `rgba(${ACCENT},${((1 - d / radius) * 0.6).toFixed(3)})`;
+          ctx.globalAlpha = (1 - d / radius) * 0.6;
           ctx.beginPath();
           ctx.moveTo(pointer.x, pointer.y);
-          ctx.lineTo(n.x, n.y);
+          ctx.lineTo(nx[i], ny[i]);
           ctx.stroke();
         }
       }
 
-      // Nodes: loose dots in chaos, solder pads on the traces once ordered.
-      ctx.lineWidth = 1;
-      for (let i = 0; i < nodes.length; i++) {
-        const n = nodes[i];
+      // ── Nodes: loose dots in chaos, solder pads on the traces once ordered ──
+      bucketCount.fill(0);
+      const showPads = p > 0.4;
+      for (let i = 0; i < count; i++) {
         const pad = degree[i] > 0;
-        const wave = Math.pow(0.5 + 0.5 * Math.sin((n.ox + n.oy) * 0.0045 - time * 0.0012 * speed), 3);
-        const alpha = Math.min(1, 0.45 * (1 - p) + (pad ? 0.55 + 0.4 * wave : 0.06) * p + n.glow);
-        ctx.fillStyle = `rgba(${ACCENT},${alpha.toFixed(3)})`;
+        const base = 0.45 * drift + (pad ? 0.55 + 0.4 * wave[i] : 0.06) * p;
+        const alpha = Math.min(1, base * circuitAlpha + glow[i]);
+        const bucket = toBucket(alpha);
+        nodeBucket[i] = bucket;
+        if (bucket !== SKIP) bucketCount[bucket]++;
+        padBucket[i] = pad && showPads && degree[i] !== 2 ? toBucket(alpha * 0.7 * p) : SKIP;
+        if (padBucket[i] !== SKIP) bucketCount[padBucket[i] + BUCKETS]++;
+      }
+      const dotBase = lite ? 1.8 : 2;
+      ctx.fillStyle = LIME;
+      for (let b = 0; b < BUCKETS; b++) {
+        if (!bucketCount[b]) continue;
+        ctx.globalAlpha = bucketAlpha(b);
         ctx.beginPath();
-        ctx.arc(n.x, n.y, 2 + n.glow * 3.5, 0, Math.PI * 2);
-        ctx.fill();
-        if (pad && p > 0.4 && degree[i] !== 2) {
-          ctx.strokeStyle = `rgba(${ACCENT},${(alpha * 0.7 * p).toFixed(3)})`;
-          ctx.beginPath();
-          ctx.arc(n.x, n.y, 5.5, 0, Math.PI * 2);
-          ctx.stroke();
+        for (let i = 0; i < count; i++) {
+          if (nodeBucket[i] !== b) continue;
+          const r = dotBase + glow[i] * 3.5;
+          ctx.moveTo(nx[i] + r, ny[i]);
+          ctx.arc(nx[i], ny[i], r, 0, TAU);
         }
+        ctx.fill();
+      }
+      for (let b = 0; b < BUCKETS; b++) {
+        if (!bucketCount[b + BUCKETS]) continue;
+        ctx.globalAlpha = bucketAlpha(b);
+        ctx.beginPath();
+        for (let i = 0; i < count; i++) {
+          if (padBucket[i] !== b) continue;
+          ctx.moveTo(nx[i] + 5.5, ny[i]);
+          ctx.arc(nx[i], ny[i], 5.5, 0, TAU);
+        }
+        ctx.stroke();
       }
 
-      // Packets travelling along the circuit.
-      for (const pk of packets) {
-        const a = nodes[pk.from];
-        const b = nodes[pk.to];
-        if (!a || !b) continue;
-        const x = a.x + (b.x - a.x) * pk.t;
-        const y = a.y + (b.y - a.y) * pk.t;
-        const tail = Math.max(0, pk.t - 0.45);
-        ctx.strokeStyle = `rgba(${ACCENT},0.55)`;
+      // ── Packets travelling along the circuit (tails, glows, heads) ──
+      if (packets.length) {
+        ctx.globalAlpha = 0.55;
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(a.x + (b.x - a.x) * tail, a.y + (b.y - a.y) * tail);
-        ctx.lineTo(x, y);
+        for (const pk of packets) {
+          const ax = nx[pk.from];
+          const ay = ny[pk.from];
+          const tail = Math.max(0, pk.t - 0.45);
+          ctx.moveTo(ax + (nx[pk.to] - ax) * tail, ay + (ny[pk.to] - ay) * tail);
+          ctx.lineTo(ax + (nx[pk.to] - ax) * pk.t, ay + (ny[pk.to] - ay) * pk.t);
+        }
         ctx.stroke();
-        ctx.fillStyle = `rgba(${ACCENT},0.18)`;
-        ctx.beginPath();
-        ctx.arc(x, y, 7, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.lineWidth = 1;
+        if (packetSprite) {
+          ctx.globalAlpha = 1;
+          for (const pk of packets) {
+            const x = nx[pk.from] + (nx[pk.to] - nx[pk.from]) * pk.t;
+            const y = ny[pk.from] + (ny[pk.to] - ny[pk.from]) * pk.t;
+            ctx.drawImage(packetSprite, x - 9, y - 9, 18, 18);
+          }
+        }
+        ctx.globalAlpha = 1;
         ctx.fillStyle = HEAD;
         ctx.beginPath();
-        ctx.arc(x, y, 2.2, 0, Math.PI * 2);
+        for (const pk of packets) {
+          const x = nx[pk.from] + (nx[pk.to] - nx[pk.from]) * pk.t;
+          const y = ny[pk.from] + (ny[pk.to] - ny[pk.from]) * pk.t;
+          ctx.moveTo(x + 2.2, y);
+          ctx.arc(x, y, 2.2, 0, TAU);
+        }
         ctx.fill();
       }
-      ctx.lineWidth = 1;
 
-      // Tap / click ripples.
+      // ── Tap / click ripples ──
       for (const rp of ripples) {
-        ctx.strokeStyle = `rgba(${ACCENT},${(rp.life * 0.6).toFixed(3)})`;
+        ctx.globalAlpha = rp.life * 0.6;
         ctx.beginPath();
-        ctx.arc(rp.x, rp.y, rp.r, 0, Math.PI * 2);
+        ctx.arc(rp.x, rp.y, rp.r, 0, TAU);
         ctx.stroke();
       }
+      ctx.globalAlpha = 1;
 
       updateHud(progress);
     };
@@ -390,47 +668,77 @@ export function SystemsCanvas() {
     const step = (time: number) => {
       frame = 0;
       if (document.hidden) return;
-      if (lite && time - lastDraw < 33) {
-        frame = requestAnimationFrame(step);
-        return;
+      frame = requestAnimationFrame(step);
+
+      // Adaptive quality: if a desktop can't keep up, drop to ~30 fps.
+      if (lastTime && !lite && budget === 0) {
+        sampledFrames++;
+        if (time - lastTime > 24) slowFrames++;
+        if (sampledFrames >= 90) {
+          if (slowFrames > 45) budget = 33;
+          sampledFrames = 0;
+          slowFrames = 0;
+        }
       }
+      lastTime = time;
+      if (budget && time - lastDraw < budget - 2) return;
+      const dt = Math.min(64, lastDraw ? time - lastDraw : 16.7);
       lastDraw = time;
-      progress += (target - progress) * 0.06;
-      scrollBoost *= 0.9;
+      const k = dt / 16.7;
+
+      // Frame-rate independent easing toward the scroll-driven targets.
+      progress += (target - progress) * (1 - Math.pow(1 - 0.06, k));
+      smoothScroll += (window.scrollY - smoothScroll) * (1 - Math.pow(1 - (gentle ? 0.05 : 0.1), k));
+      scrollBoost *= Math.pow(0.9, k);
+      if (pointer.active && pointer.touchUntil && time > pointer.touchUntil) {
+        pointer.active = false;
+        pointer.touchUntil = 0;
+      }
 
       // A few erratic packets even in chaos; the full flow once ordered.
       const wanted = Math.floor(3 + easeInOut(progress) * (maxPackets - 3));
       if (packets.length < wanted && Math.random() < 0.3) spawnPacket();
-      packets = packets.filter((pk) => {
-        pk.t += pk.speed * speed * (1 + scrollBoost * 0.08);
-        if (pk.t < 1) return true;
-        // Arrived: continue to a random next neighbour (no immediate U-turn).
-        if (packets.length > wanted + 6) return false;
-        const next = traceNeighbors(pk.to).filter((n) => n !== pk.from);
-        const to = next[Math.floor(Math.random() * next.length)];
-        if (to === undefined) return false;
-        pk.from = pk.to;
-        pk.to = to;
-        pk.t = 0;
-        return true;
-      });
-
-      ripples = ripples.filter((rp) => {
-        rp.r += 6;
-        rp.life -= 0.022;
-        for (const n of nodes) {
-          const d = Math.hypot(n.x - rp.x, n.y - rp.y);
-          if (Math.abs(d - rp.r) < 10) n.glow = Math.max(n.glow, rp.life);
+      let keep = 0;
+      for (let i = 0; i < packets.length; i++) {
+        const pk = packets[i];
+        pk.t += pk.speed * speed * k * (1 + scrollBoost * 0.08);
+        if (pk.t >= 1) {
+          // Arrived: continue to a random next neighbour (no immediate U-turn).
+          if (packets.length > wanted + 6) continue;
+          const to = pickNext(pk.to, pk.from);
+          if (to < 0) continue;
+          pk.from = pk.to;
+          pk.to = to;
+          pk.t = 0;
         }
-        return rp.life > 0;
-      });
+        packets[keep++] = pk;
+      }
+      packets.length = keep;
+
+      keep = 0;
+      for (let i = 0; i < ripples.length; i++) {
+        const rp = ripples[i];
+        rp.r += 6 * k;
+        rp.life -= 0.022 * k;
+        if (rp.life <= 0) continue;
+        for (let n = 0; n < count; n++) {
+          const dx = nx[n] - rp.x;
+          const dy = ny[n] - rp.y;
+          if (Math.abs(Math.sqrt(dx * dx + dy * dy) - rp.r) < 10 && rp.life > glow[n]) glow[n] = rp.life;
+        }
+        ripples[keep++] = rp;
+      }
+      ripples.length = keep;
 
       draw(time);
-      frame = requestAnimationFrame(step);
     };
 
     const start = () => {
-      if (animate && !frame && !document.hidden) frame = requestAnimationFrame(step);
+      if (animate && !frame && !document.hidden) {
+        lastTime = 0;
+        lastDraw = 0;
+        frame = requestAnimationFrame(step);
+      }
     };
 
     const computeTarget = () => {
@@ -448,6 +756,7 @@ export function SystemsCanvas() {
       computeTarget();
       start();
     } else {
+      smoothScroll = 0;
       draw(0);
     }
 
@@ -455,6 +764,9 @@ export function SystemsCanvas() {
     const onResize = () => {
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => {
+        // Phones resize on every URL-bar show/hide; the canvas is CSS-sized,
+        // so small height-only changes don't need a full rebuild.
+        if (window.innerWidth === width && Math.abs(window.innerHeight - height) < 160) return;
         build();
         if (!animate) draw(0);
       }, 150);
@@ -464,6 +776,7 @@ export function SystemsCanvas() {
       pointer.x = e.clientX;
       pointer.y = e.clientY;
       pointer.active = true;
+      pointer.touchUntil = e.pointerType === "mouse" ? 0 : performance.now() + 900;
     };
     const onPointerLeave = () => {
       pointer.active = false;
@@ -471,13 +784,15 @@ export function SystemsCanvas() {
     const onPointerDown = (e: PointerEvent) => {
       pointer.x = e.clientX;
       pointer.y = e.clientY;
-      pointer.active = e.pointerType === "mouse";
+      pointer.active = true;
+      pointer.touchUntil = e.pointerType === "mouse" ? 0 : performance.now() + 900;
       if (!gentle) ripples.push({ x: e.clientX, y: e.clientY, r: 4, life: 1 });
       const origin = nearestNode(e.clientX, e.clientY);
       for (let i = 0; i < 4; i++) spawnPacket(origin);
     };
-    const onPointerUp = (e: PointerEvent) => {
-      if (e.pointerType !== "mouse") pointer.active = false;
+    const onPointerCancel = (e: PointerEvent) => {
+      // Touch scrolls cancel the pointer: let the glow fade out on its own.
+      if (e.pointerType !== "mouse") pointer.touchUntil = performance.now() + 400;
     };
     const onVisibility = () => start();
 
@@ -487,26 +802,33 @@ export function SystemsCanvas() {
       window.addEventListener("scroll", onScroll, { passive: true });
       window.addEventListener("pointermove", onPointerMove, { passive: true });
       window.addEventListener("pointerdown", onPointerDown, { passive: true });
-      window.addEventListener("pointerup", onPointerUp, { passive: true });
+      window.addEventListener("pointerup", onPointerCancel, { passive: true });
+      window.addEventListener("pointercancel", onPointerCancel, { passive: true });
       document.documentElement.addEventListener("pointerleave", onPointerLeave);
     }
 
     return () => {
       cancelAnimationFrame(frame);
+      frame = 0;
       clearTimeout(resizeTimer);
       window.removeEventListener("resize", onResize);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerdown", onPointerDown);
-      window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointerup", onPointerCancel);
+      window.removeEventListener("pointercancel", onPointerCancel);
       document.documentElement.removeEventListener("pointerleave", onPointerLeave);
     };
   }, [isStaticRoute]);
 
   return (
     <>
-      <canvas ref={canvasRef} aria-hidden="true" className="pointer-events-none fixed inset-0 z-0 size-full [mask-image:radial-gradient(ellipse_90%_85%_at_50%_45%,#000_45%,transparent_100%)]" />
+      <canvas
+        ref={canvasRef}
+        aria-hidden="true"
+        className="imt-canvas pointer-events-none fixed inset-0 z-0 size-full [mask-image:radial-gradient(ellipse_90%_85%_at_50%_45%,#000_45%,transparent_100%)]"
+      />
       {isStaticRoute ? null : (
         <div
           aria-hidden="true"
@@ -520,7 +842,9 @@ export function SystemsCanvas() {
               style={{ transform: "scaleX(0.04)" }}
             />
           </span>
-          <span ref={labelRef}>0% · OPERAR</span>
+          <span ref={labelRef} className="tabular-nums">
+            0% · OPERAR
+          </span>
         </div>
       )}
     </>

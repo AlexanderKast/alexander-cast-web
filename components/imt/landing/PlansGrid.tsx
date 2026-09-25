@@ -15,15 +15,17 @@ function effectivePrice(price: number, billing: Billing) {
 }
 
 /** Tweens a number when it changes (price updates). */
-function useTween(value: number, ms = 450) {
+function useTween(value: number, ms = 700) {
   const [shown, setShown] = useState(value);
   const from = useRef(value);
   useEffect(() => {
+    // Reduced motion: a short, soft tween instead of none.
+    const duration = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? Math.min(ms, 250) : ms;
     const start = performance.now();
     const a = from.current;
     let frame = 0;
     const tick = (now: number) => {
-      const t = Math.min((now - start) / ms, 1);
+      const t = Math.min((now - start) / duration, 1);
       const eased = 1 - Math.pow(1 - t, 3);
       const current = Math.round(a + (value - a) * eased);
       setShown(current);
@@ -39,7 +41,12 @@ function useTween(value: number, ms = 450) {
 function Price({ value, featured }: { value: number; featured: boolean }) {
   const shown = useTween(value);
   return (
-    <span className={cn("font-imt-display text-5xl font-bold tracking-tight tabular-nums", featured ? "text-imt-accent" : "text-imt-text")}>
+    <span
+      className={cn(
+        "font-imt-display text-4xl font-bold tracking-tight tabular-nums sm:text-5xl",
+        featured ? "text-imt-accent" : "text-imt-text",
+      )}
+    >
       {formatCop(Math.round(shown / 1000) * 1000)}
     </span>
   );
@@ -66,7 +73,13 @@ export function PlansGrid() {
 
   useEffect(() => {
     if (!recommended) return;
-    cardRefs.current[recommended]?.scrollIntoView({ behavior: "smooth", block: "center" });
+    const card = cardRefs.current[recommended];
+    if (!card) return;
+    // Only glide to the card when it is not already fully in view.
+    const rect = card.getBoundingClientRect();
+    if (rect.top >= 0 && rect.bottom <= window.innerHeight) return;
+    const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    card.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "center" });
   }, [recommended]);
 
   return (
@@ -74,18 +87,18 @@ export function PlansGrid() {
       {/* Plan finder */}
       <div
         data-reveal=""
-        className="mt-8 grid gap-6 rounded-[2rem] border border-imt-border bg-imt-bg/90 p-6 backdrop-blur sm:p-8 lg:grid-cols-[1fr_auto_auto] lg:items-end"
+        className="mt-8 grid gap-6 rounded-3xl border border-imt-border bg-imt-bg/90 p-5 backdrop-blur sm:rounded-[2rem] sm:p-8 md:grid-cols-2 lg:grid-cols-[1fr_auto_auto] lg:items-end"
       >
-        <div>
-          <p className="flex items-center gap-2 font-imt-display text-2xl font-bold">
+        <div className="md:col-span-2 lg:col-span-1">
+          <p className="flex items-center gap-2 font-imt-display text-xl font-bold sm:text-2xl">
             <Sparkles className="size-5 text-imt-accent" aria-hidden />
             ¿Qué plan te sirve?
           </p>
           <p className="mt-1 text-imt-muted">Responde dos preguntas y te lo marcamos.</p>
         </div>
-        <fieldset>
+        <fieldset className="min-w-0">
           <legend className="mb-2 text-sm text-imt-muted">¿Cuántos frentes quieres mover a la vez?</legend>
-          <div className="imt-segment">
+          <div className="imt-segment flex-wrap [&>button]:min-h-11 [&>button]:focus-visible:outline-2 [&>button]:focus-visible:outline-offset-2 [&>button]:focus-visible:outline-imt-accent">
             {FRONTS.map((f) => (
               <button key={f.value} type="button" aria-pressed={fronts === f.value} onClick={() => setFronts(f.value)}>
                 {f.label}
@@ -93,9 +106,9 @@ export function PlansGrid() {
             ))}
           </div>
         </fieldset>
-        <fieldset>
+        <fieldset className="min-w-0">
           <legend className="mb-2 text-sm text-imt-muted">¿Necesitas software a la medida?</legend>
-          <div className="imt-segment">
+          <div className="imt-segment flex-wrap [&>button]:min-h-11 [&>button]:focus-visible:outline-2 [&>button]:focus-visible:outline-offset-2 [&>button]:focus-visible:outline-imt-accent">
             <button type="button" aria-pressed={ownProduct === false} onClick={() => setOwnProduct(false)}>
               No
             </button>
@@ -104,9 +117,12 @@ export function PlansGrid() {
             </button>
           </div>
         </fieldset>
-        <p className="min-h-6 lg:col-span-3" role="status" aria-live="polite">
+        <p className="min-h-6 md:col-span-2 lg:col-span-3" role="status" aria-live="polite">
           {recommended ? (
-            <span className="text-imt-text">
+            <span
+              key={recommended}
+              className="inline-block animate-in text-imt-text fade-in slide-in-from-bottom-1 duration-500 motion-reduce:slide-in-from-bottom-0"
+            >
               Te recomendamos <strong className="text-imt-accent">{PLANS.find((p) => p.id === recommended)?.name}</strong>. Lo
               confirmamos en el diagnóstico.
             </span>
@@ -116,7 +132,7 @@ export function PlansGrid() {
 
       {/* Billing toggle */}
       <div className="mt-10 flex flex-col items-center gap-3">
-        <div className="imt-segment" role="group" aria-label="Forma de pago">
+        <div className={cn("imt-segment flex-wrap [&>button]:min-h-11 [&>button]:focus-visible:outline-2 [&>button]:focus-visible:outline-offset-2 [&>button]:focus-visible:outline-imt-accent", "justify-center")} role="group" aria-label="Forma de pago">
           <button type="button" aria-pressed={billing === "mensual"} onClick={() => setBilling("mensual")}>
             Mensual
           </button>
@@ -124,12 +140,12 @@ export function PlansGrid() {
             Anual · 2 meses gratis
           </button>
         </div>
-        <p className="text-sm text-imt-muted">
+        <p key={billing} className="animate-in text-center text-sm text-imt-muted fade-in duration-500">
           {billing === "anual" ? "Pagas 10 meses y recibes 12. Precio equivalente por mes." : "Contrato mínimo de 3 meses."}
         </p>
       </div>
 
-      <ul className="mt-10 grid gap-5 lg:grid-cols-3 lg:items-stretch">
+      <ul className="mx-auto mt-10 grid max-w-xl gap-5 lg:max-w-none lg:grid-cols-3 lg:items-stretch">
         {PLANS.map((plan, i) => {
           const isRecommended = recommended === plan.id;
           return (
@@ -148,7 +164,7 @@ export function PlansGrid() {
                 data-spotlight=""
                 data-active={plan.featured || isRecommended ? "true" : undefined}
                 className={cn(
-                  "imt-glow-border flex h-full scroll-mt-28 flex-col p-8 sm:p-10",
+                  "imt-glow-border flex h-full scroll-mt-28 flex-col p-6 transition-shadow duration-500 sm:p-10",
                   plan.featured && "lg:py-14",
                   isRecommended && "ring-2 ring-imt-accent ring-offset-4 ring-offset-imt-bg",
                 )}
@@ -156,7 +172,7 @@ export function PlansGrid() {
                 <div className="flex items-center justify-between gap-3">
                   <h3 className="font-imt-mono text-lg font-medium tracking-[0.22em] text-imt-text">{plan.name}</h3>
                   {isRecommended ? (
-                    <span className="rounded-full bg-imt-text px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-imt-bg">
+                    <span className="animate-in rounded-full bg-imt-text px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-imt-bg zoom-in-90 fade-in duration-500">
                       Para ti
                     </span>
                   ) : plan.featured ? (
@@ -166,19 +182,19 @@ export function PlansGrid() {
                   ) : null}
                 </div>
 
-                <p className="mt-8 text-sm text-imt-muted">desde</p>
+                <p className="mt-6 text-sm text-imt-muted sm:mt-8">desde</p>
                 <p className="flex flex-wrap items-baseline gap-x-2">
                   <Price value={effectivePrice(plan.priceCop, billing)} featured={plan.featured} />
                   <span className="text-imt-muted">/mes · COP</span>
                 </p>
                 {billing === "anual" ? (
-                  <p className="mt-1 text-xs text-imt-muted line-through">{formatCop(plan.priceCop)}/mes</p>
+                  <p className="mt-1 animate-in text-xs text-imt-muted line-through fade-in duration-500">{formatCop(plan.priceCop)}/mes</p>
                 ) : null}
 
-                <ul className="mt-8 space-y-3 border-t border-imt-border pt-8">
+                <ul className="mt-6 space-y-3 border-t border-imt-border pt-6 sm:mt-8 sm:pt-8">
                   {[plan.hours, plan.projects].map((line) => (
-                    <li key={line} className="flex items-center gap-3 text-lg text-imt-text">
-                      <Check className="size-5 shrink-0 text-imt-accent" aria-hidden />
+                    <li key={line} className="flex items-start gap-3 text-base text-imt-text sm:text-lg">
+                      <Check className="mt-1 size-5 shrink-0 text-imt-accent" aria-hidden />
                       {line}
                     </li>
                   ))}
@@ -187,7 +203,7 @@ export function PlansGrid() {
 
                 <Link
                   href={diagnosticoHref(plan.id)}
-                  className={buttonClasses(plan.featured || isRecommended ? "primary" : "secondary", "lg", "mt-10 w-full")}
+                  className={buttonClasses(plan.featured || isRecommended ? "primary" : "secondary", "lg", "mt-8 w-full sm:mt-10")}
                   aria-label={`Agenda tu diagnóstico — plan ${plan.name}`}
                 >
                   Agenda tu diagnóstico

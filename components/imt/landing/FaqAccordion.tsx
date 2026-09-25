@@ -49,13 +49,16 @@ export function FaqAccordion({ items }: { items: readonly Item[] }) {
                 aria-controls={panelId}
                 onClick={() => setOpen(isOpen ? null : i)}
                 onKeyDown={(e) => onKeyDown(e, i)}
-                className="flex w-full items-center justify-between gap-6 py-6 text-left font-imt-display text-lg font-medium text-imt-text transition-colors hover:text-imt-accent sm:text-xl"
+                className={cn(
+                  "flex min-h-11 w-full items-center justify-between gap-4 py-5 text-left font-imt-display text-base font-medium transition-colors duration-300 hover:text-imt-accent focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-imt-accent sm:gap-6 sm:py-6 sm:text-xl",
+                  isOpen ? "text-imt-accent" : "text-imt-text",
+                )}
               >
                 {item.question}
                 <span
                   className={cn(
-                    "inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-imt-border text-imt-accent transition-transform duration-200 motion-reduce:transition-none",
-                    isOpen && "rotate-45 border-imt-accent",
+                    "inline-flex size-9 shrink-0 items-center justify-center rounded-full border text-imt-accent transition-[transform,background-color,border-color,color] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-300",
+                    isOpen ? "rotate-45 border-imt-accent bg-imt-accent text-imt-bg" : "border-imt-border",
                   )}
                   aria-hidden="true"
                 >
@@ -65,7 +68,7 @@ export function FaqAccordion({ items }: { items: readonly Item[] }) {
             </h3>
             <div id={panelId} role="region" aria-labelledby={buttonId} className="imt-collapse" data-open={isOpen}>
               <div inert={!isOpen}>
-                <p className="max-w-3xl pb-6 pr-12 text-pretty leading-relaxed text-imt-muted">{item.answer}</p>
+                <p className="max-w-3xl pb-6 pr-2 text-pretty leading-relaxed text-imt-muted sm:pr-12">{item.answer}</p>
               </div>
             </div>
           </div>

@@ -131,7 +131,7 @@ export function DraggableMarquee({
       tabIndex={0}
       onKeyDown={onKeyDown}
       className={cn(
-        "imt-marquee cursor-grab select-none [touch-action:pan-y] data-[dragging=true]:cursor-grabbing",
+        "imt-marquee cursor-grab select-none rounded-xl [touch-action:pan-y] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-imt-accent data-[dragging=true]:cursor-grabbing",
         className,
       )}
     >

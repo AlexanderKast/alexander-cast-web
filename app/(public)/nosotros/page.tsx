@@ -62,22 +62,25 @@ export default function NosotrosPage() {
       />
 
       <section aria-label="Por qué nace IA Master Tech" className="relative pb-16 sm:pb-24">
-        <div className="mx-auto grid w-full max-w-7xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-[1.2fr_0.8fr] lg:gap-16 lg:px-8">
-          <figure data-reveal="" data-tilt="" className="imt-reveal-img">
-            <Image
-              src={estudioImage}
-              alt="Estudio de desarrollo de noche con dos puestos de trabajo, monitores con código y un tablero de estrategia"
-              placeholder="blur"
-              sizes="(min-width: 1024px) 60vw, 100vw"
-              className="imt-img-fade h-auto w-full"
-            />
+        <div className="mx-auto grid w-full max-w-7xl items-center gap-8 px-4 sm:gap-10 sm:px-6 lg:grid-cols-[1.2fr_0.8fr] lg:gap-16 lg:px-8">
+          <figure className="relative isolate">
+            <div aria-hidden="true" className="absolute inset-[10%] -z-10 rounded-full bg-imt-accent/10 blur-3xl" />
+            <div data-reveal="" data-tilt="" className="imt-reveal-img">
+              <Image
+                src={estudioImage}
+                alt="Estudio de desarrollo de noche con dos puestos de trabajo, monitores con código y un tablero de estrategia"
+                placeholder="blur"
+                sizes="(min-width: 1024px) 60vw, 100vw"
+                className="imt-img-fade h-auto w-full"
+              />
+            </div>
           </figure>
-          <div data-reveal="" className="space-y-5 text-pretty text-lg leading-relaxed text-imt-muted">
+          <div data-reveal="" className="space-y-5 text-pretty text-base leading-relaxed text-imt-muted sm:text-lg">
             <p>
               Después de años operando negocios digitales vimos el mismo patrón una y otra vez: empresas que ya venden,
               pero que crecen a punta de tareas manuales, hojas de cálculo y personas que no pueden faltar.
             </p>
-            <p className="text-imt-text">
+            <p className="border-l-2 border-imt-accent pl-5 text-imt-text">
               IA Master Tech nace para cerrar esa brecha: ser el equipo de desarrollo que esas empresas no tienen, con
               estrategia y código trabajando juntos y una entrega funcionando cada semana.
             </p>
@@ -93,17 +96,20 @@ export default function NosotrosPage() {
               Estrategia y código en la misma mesa.
             </h2>
           </header>
-          <ul className="mt-12 grid gap-5 md:grid-cols-2">
+          <ul className="mt-10 grid gap-5 sm:mt-12 md:grid-cols-2">
             {TEAM.map((member, i) => (
-              <Card key={member.slug} as="li" reveal delay={i * 100} className="sm:p-10">
-                <article id={member.slug} className="grid scroll-mt-28 gap-6 sm:grid-cols-[140px_1fr]">
-                  <TeamAvatar photo={member.photo} name={member.name} initials={member.initials} className="w-32 sm:w-full" sizes="140px" />
+              <Card key={member.slug} as="li" reveal delay={i * 100} className="group md:p-8 lg:p-10">
+                <article id={member.slug} className="grid scroll-mt-28 gap-6 sm:grid-cols-[140px_1fr] md:grid-cols-1 lg:grid-cols-[140px_1fr]">
+                  <TeamAvatar photo={member.photo} name={member.name} initials={member.initials} className="w-28 sm:w-full md:w-28 lg:w-full" sizes="140px" />
                   <div>
-                    <h3 className="text-3xl font-bold">{member.name}</h3>
+                    <h3 className="text-2xl font-bold sm:text-3xl">{member.name}</h3>
                     <p className="mt-2 font-imt-mono text-xs uppercase tracking-[0.16em] text-imt-accent">{member.role}</p>
                     <ul className="mt-5 space-y-2">
                       {(BIOS[member.slug] ?? member.bio).map((line) => (
-                        <li key={line} className="text-pretty leading-relaxed text-imt-muted">
+                        <li key={line} className="flex gap-2 text-pretty leading-relaxed text-imt-muted">
+                          <span aria-hidden="true" className="text-imt-accent">
+                            ·
+                          </span>
                           {line}
                         </li>
                       ))}
@@ -113,7 +119,7 @@ export default function NosotrosPage() {
               </Card>
             ))}
           </ul>
-          <p data-reveal="" className="mt-12 text-center font-imt-display text-2xl font-medium text-imt-text sm:text-3xl">
+          <p data-reveal="" className="mx-auto mt-10 max-w-3xl text-balance text-center font-imt-display text-xl font-medium text-imt-text sm:mt-12 sm:text-3xl">
             Sin intermediarios: <span className="text-imt-accent">quien entiende tu negocio es quien lo construye.</span>
           </p>
         </div>
@@ -129,8 +135,8 @@ export default function NosotrosPage() {
               Tres reglas que no negociamos.
             </h2>
           </header>
-          <p data-reveal="" className="mt-4 text-imt-muted">Toca una tarjeta (o pasa el mouse) para ver cómo se ve en la práctica.</p>
-          <ol className="mt-10 grid gap-5 md:grid-cols-3">
+          <p data-reveal="" className="mt-4 text-imt-muted">Toca una tarjeta para ver cómo se ve en la práctica.</p>
+          <ol className="mt-8 grid gap-4 sm:mt-10 sm:gap-5 md:grid-cols-3">
             {VALUES.map((value, i) => (
               <li key={value.title} data-reveal="" style={{ "--reveal-delay": `${i * 100}ms` } as React.CSSProperties}>
                 <FlipCard
@@ -139,8 +145,8 @@ export default function NosotrosPage() {
                   back={VALUE_EXAMPLES[i]}
                   front={
                     <span className="block">
-                      <span className="block font-imt-display text-6xl font-bold text-imt-accent">0{i + 1}</span>
-                      <span className="mt-6 block font-imt-display text-2xl font-bold text-imt-text">{value.title}</span>
+                      <span className="block font-imt-display text-5xl font-bold text-imt-accent sm:text-6xl">0{i + 1}</span>
+                      <span className="mt-5 block text-balance font-imt-display text-xl font-bold text-imt-text sm:mt-6 sm:text-2xl">{value.title}</span>
                       <span className="mt-3 block text-pretty leading-relaxed text-imt-muted">{value.text}</span>
                     </span>
                   }

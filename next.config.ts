@@ -26,11 +26,14 @@ const cabecerasSeguridad = [
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  poweredByHeader: false,
   turbopack: {
     root: path.resolve(__dirname),
   },
   images: {
-    formats: ["image/avif", "image/webp"],
+    // Security stopgap: AVIF optimization in next 16.2.4 has a critical RCE.
+    // Re-add "image/avif" once `next` is upgraded to >=16.3.6.
+    formats: ["image/webp"],
   },
   experimental: {
     optimizePackageImports: ["lucide-react", "framer-motion"],

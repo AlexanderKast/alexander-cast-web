@@ -5,6 +5,31 @@ type SendResult =
   | { ok: true; id: string }
   | { ok: false; error: string };
 
+/** Escapes a user-controlled value before interpolating it into email HTML. */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/** Returns the URL only if it parses as http(s); otherwise null (blocks javascript:, data:, etc.). */
+function safeHttpUrl(value: string): string | null {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Collapses CR/LF so a user value cannot inject extra lines into a header like Subject. */
+function singleLine(value: string): string {
+  return value.replace(/[\r\n]+/g, " ").trim();
+}
+
 let cached: Resend | null = null;
 
 function getResend(): Resend {
@@ -38,7 +63,7 @@ export async function sendWelcomeEmail(
 ): Promise<SendResult> {
   try {
     const resend = getResend();
-    const saludo = props.nombre ? `Hola ${props.nombre},` : "Hola,";
+    const saludo = props.nombre ? `Hola ${escapeHtml(props.nombre)},` : "Hola,";
     const { data, error } = await resend.emails.send({
       from: getFrom(),
       to: props.to,
@@ -83,26 +108,31 @@ export async function sendLeadMagnetEmail(
 ): Promise<SendResult> {
   try {
     const resend = getResend();
-    const saludo = props.nombre ? `Hola ${props.nombre},` : "Hola,";
-    const { data, error } = await resend.emails.send({
-      from: getFrom(),
-      to: props.to,
-      subject: `Tu descarga: ${props.leadMagnetTitulo}`,
-      html: `
-        <div style="font-family:Inter,Arial,sans-serif;color:#0A0A0A;max-width:560px;margin:0 auto;padding:24px;">
-          <h1 style="font-size:22px;margin:0 0 16px;">${saludo}</h1>
-          <p style="font-size:16px;line-height:1.6;">
-            Aqui tienes tu copia de <strong>${props.leadMagnetTitulo}</strong>.
-          </p>
+    const saludo = props.nombre ? `Hola ${escapeHtml(props.nombre)},` : "Hola,";
+    const titulo = escapeHtml(props.leadMagnetTitulo);
+    const safeUrl = safeHttpUrl(props.downloadUrl);
+    const enlace = safeUrl
+      ? `
           <p style="margin:24px 0;">
-            <a href="${props.downloadUrl}" style="background:#E6B800;color:#0A0A0A;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block;">
+            <a href="${escapeHtml(safeUrl)}" style="background:#E6B800;color:#0A0A0A;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block;">
               Descargar ahora
             </a>
           </p>
           <p style="font-size:14px;line-height:1.6;color:#555;">
             Si el boton no funciona, copia este enlace en tu navegador:<br/>
-            <span style="word-break:break-all;">${props.downloadUrl}</span>
-          </p>
+            <span style="word-break:break-all;">${escapeHtml(safeUrl)}</span>
+          </p>`
+      : "";
+    const { data, error } = await resend.emails.send({
+      from: getFrom(),
+      to: props.to,
+      subject: `Tu descarga: ${singleLine(props.leadMagnetTitulo)}`,
+      html: `
+        <div style="font-family:Inter,Arial,sans-serif;color:#0A0A0A;max-width:560px;margin:0 auto;padding:24px;">
+          <h1 style="font-size:22px;margin:0 0 16px;">${saludo}</h1>
+          <p style="font-size:16px;line-height:1.6;">
+            Aqui tienes tu copia de <strong>${titulo}</strong>.
+          </p>${enlace}
           <p style="font-size:16px;line-height:1.6;margin-top:24px;">
             Alexander Cast
           </p>
@@ -132,7 +162,7 @@ export async function sendContactNotification(
 ): Promise<SendResult> {
   try {
     const resend = getResend();
-    const asunto = props.asunto ?? `Nuevo contacto: ${props.nombre}`;
+    const asunto = singleLine(props.asunto ?? `Nuevo contacto: ${props.nombre}`);
     const { data, error } = await resend.emails.send({
       from: getFrom(),
       to: site.contacto.principal,
@@ -141,10 +171,10 @@ export async function sendContactNotification(
       html: `
         <div style="font-family:Inter,Arial,sans-serif;color:#0A0A0A;max-width:560px;margin:0 auto;padding:24px;">
           <h2 style="margin:0 0 12px;">Nuevo mensaje desde ${site.url.replace("https://", "")}</h2>
-          <p><strong>Nombre:</strong> ${props.nombre}</p>
-          <p><strong>Email:</strong> ${props.email}</p>
+          <p><strong>Nombre:</strong> ${escapeHtml(props.nombre)}</p>
+          <p><strong>Email:</strong> ${escapeHtml(props.email)}</p>
           <p><strong>Mensaje:</strong></p>
-          <p style="white-space:pre-wrap;background:#f6f6f6;padding:12px;border-radius:6px;">${props.mensaje}</p>
+          <p style="white-space:pre-wrap;background:#f6f6f6;padding:12px;border-radius:6px;">${escapeHtml(props.mensaje)}</p>
         </div>
       `,
     });
@@ -154,15 +184,6 @@ export async function sendContactNotification(
     const message = err instanceof Error ? err.message : "Error desconocido";
     return { ok: false, error: message };
   }
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
 }
 
 type DiagnosticoNotificationProps = {
@@ -194,7 +215,7 @@ export async function sendDiagnosticoNotification(
       from: getFrom(),
       to,
       replyTo: props.email,
-      subject: `Nuevo diagnóstico IA Master Tech: ${props.empresa}`,
+      subject: `Nuevo diagnóstico IA Master Tech: ${singleLine(props.empresa)}`,
       html: `
         <div style="font-family:Arial,sans-serif;color:#0A0A0A;max-width:600px;margin:0 auto;padding:24px;">
           <h2 style="margin:0 0 16px;">Nuevo diagnóstico — ${escapeHtml(props.empresa)}</h2>

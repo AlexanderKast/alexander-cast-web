@@ -10,12 +10,14 @@ const TILT_DEG = 3;
  * - `.imt-btn`: magnetic pull toward the cursor.
  * - `[data-tilt]`: subtle 3D tilt.
  * - `[data-spotlight]`: sets --mx / --my for the CSS spotlight.
- * Mouse only (no touch jitter) and disabled with prefers-reduced-motion.
+ * Mouse only (no touch jitter). With prefers-reduced-motion the movement
+ * (magnet, tilt) is off but the spotlight, which doesn't move anything,
+ * stays. Transforms ease back through the CSS transitions in app/imt.css.
  */
 export function PointerEffects() {
   useEffect(() => {
-    const canAnimate = window.matchMedia("(pointer: fine) and (prefers-reduced-motion: no-preference)");
-    if (!canAnimate.matches) return;
+    if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+    const canMove = window.matchMedia("(prefers-reduced-motion: no-preference)").matches;
 
     let frame = 0;
     let lastEvent: PointerEvent | null = null;
@@ -34,8 +36,9 @@ export function PointerEffects() {
       const target = e.target instanceof Element ? e.target : null;
       const touched = new Set<HTMLElement>();
 
-      const button = target?.closest<HTMLElement>(".imt-btn");
-      if (button) {
+      // No pull while a mouse button is held (text selection, dragging).
+      const button = canMove && e.buttons === 0 ? target?.closest<HTMLElement>(".imt-btn") : null;
+      if (button && !button.matches(":disabled, [aria-disabled='true']")) {
         const r = button.getBoundingClientRect();
         const dx = (e.clientX - (r.left + r.width / 2)) / (r.width / 2);
         const dy = (e.clientY - (r.top + r.height / 2)) / (r.height / 2);
@@ -43,7 +46,7 @@ export function PointerEffects() {
         touched.add(button);
       }
 
-      const tilt = target?.closest<HTMLElement>("[data-tilt]");
+      const tilt = canMove ? target?.closest<HTMLElement>("[data-tilt]") : null;
       if (tilt) {
         const r = tilt.getBoundingClientRect();
         const px = (e.clientX - r.left) / r.width - 0.5;

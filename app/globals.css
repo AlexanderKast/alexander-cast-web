@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "./imt.css";
+/* Typography plugin: used by the blog post body (`prose`). */
+@plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
 

@@ -24,9 +24,9 @@ export function TeamAvatar({
   const hasPhoto = fs.existsSync(path.join(process.cwd(), "public", photo));
 
   return (
-    <div className={cn("relative aspect-square overflow-hidden rounded-2xl border border-imt-border bg-imt-bg", className)}>
+    <div className={cn("relative aspect-square overflow-hidden rounded-2xl border border-imt-border bg-imt-bg transition-[border-color,box-shadow] duration-500 group-hover:border-imt-accent group-hover:shadow-[0_0_40px_-12px_rgba(163,230,53,0.6)]", className)}>
       {hasPhoto ? (
-        <Image src={photo} alt={`Foto de ${name}`} fill sizes={sizes} className="object-cover" />
+        <Image src={photo} alt={`Foto de ${name}`} fill sizes={sizes} className="object-cover transition-transform duration-700 ease-out group-hover:scale-105 motion-reduce:transition-none" />
       ) : (
         <div className="flex size-full items-center justify-center" role="img" aria-label={`${name} (foto pendiente)`}>
           <svg viewBox="0 0 200 200" className="absolute inset-0 size-full" aria-hidden="true">
@@ -34,7 +34,9 @@ export function TeamAvatar({
             <circle cx="90" cy="80" r="4" fill="#3a5a1f" />
             <circle cx="60" cy="120" r="4" fill="#3a5a1f" />
           </svg>
-          <span className="relative font-imt-display text-5xl font-bold tracking-tight text-imt-accent">{initials}</span>
+          <span className="relative font-imt-display text-4xl font-bold tracking-tight text-imt-accent transition-transform duration-700 ease-out group-hover:scale-110 motion-reduce:transition-none sm:text-5xl">
+            {initials}
+          </span>
         </div>
       )}
     </div>

@@ -16,10 +16,13 @@ export function StepDetails({ items }: { items: readonly string[] }) {
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-2 rounded-full border border-imt-border bg-imt-bg/80 px-4 py-2.5 text-sm font-semibold text-imt-text transition-colors hover:border-imt-accent hover:text-imt-accent"
+        className={cn(
+          "inline-flex min-h-11 items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-semibold transition-colors duration-300 hover:border-imt-accent hover:text-imt-accent focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-imt-accent",
+          open ? "border-imt-accent bg-imt-accent/10 text-imt-accent" : "border-imt-border bg-imt-bg/80 text-imt-text",
+        )}
       >
         ¿Qué recibes?
-        <ChevronDown className={cn("size-4 transition-transform duration-300", open && "rotate-180")} aria-hidden />
+        <ChevronDown className={cn("size-4 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]", open && "rotate-180")} aria-hidden />
       </button>
       <div id={panelId} className="imt-collapse" data-open={open}>
         <div inert={!open}>
@@ -28,12 +31,12 @@ export function StepDetails({ items }: { items: readonly string[] }) {
               <li
                 key={item}
                 className={cn(
-                  "flex items-center gap-3 text-lg text-imt-text transition-all duration-500",
+                  "flex items-start gap-3 text-base text-imt-text transition-[opacity,translate] duration-500 ease-out motion-reduce:translate-x-0 sm:text-lg",
                   open ? "translate-x-0 opacity-100" : "-translate-x-3 opacity-0",
                 )}
                 style={{ transitionDelay: open ? `${120 + i * 90}ms` : "0ms" } as CSSProperties}
               >
-                <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-imt-accent text-imt-bg">
+                <span className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-imt-accent text-imt-bg">
                   <Check className="size-3.5" strokeWidth={3} aria-hidden />
                 </span>
                 {item}

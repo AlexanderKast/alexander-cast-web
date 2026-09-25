@@ -45,7 +45,7 @@ const FIELD_ORDER: (keyof FieldErrors)[] = [
 ];
 
 const inputClass =
-  "h-12 w-full rounded-xl border border-imt-border bg-imt-bg px-4 text-base text-imt-text transition-[border-color,box-shadow] duration-300 placeholder:text-imt-dim hover:border-imt-border-solid focus-visible:border-imt-accent focus-visible:shadow-[0_0_0_4px_rgba(163,230,53,0.15)] aria-[invalid=true]:border-red-300";
+  "h-12 w-full rounded-xl border border-imt-border bg-imt-bg px-4 text-base text-imt-text outline-none transition-[border-color,box-shadow,background-color] duration-300 ease-out placeholder:text-imt-dim hover:border-imt-border-solid focus-visible:border-imt-accent focus-visible:bg-imt-elev focus-visible:shadow-[0_0_0_4px_rgba(163,230,53,0.15),0_12px_32px_-16px_rgba(163,230,53,0.45)] aria-[invalid=true]:border-red-300";
 
 function Field({
   id,
@@ -65,8 +65,11 @@ function Field({
   className?: string;
 }) {
   return (
-    <div className={cn("flex flex-col gap-2", className)}>
-      <label htmlFor={id} className="text-sm font-medium text-imt-text">
+    <div className={cn("group/field flex flex-col gap-2", className)}>
+      <label
+        htmlFor={id}
+        className="text-sm font-medium text-imt-text transition-colors duration-300 group-focus-within/field:text-imt-accent"
+      >
         {label}
         {required ? (
           <span className="text-imt-accent" aria-hidden="true">
@@ -84,7 +87,7 @@ function Field({
         </p>
       ) : null}
       {error ? (
-        <p id={`${id}-error`} className="text-sm text-red-300" role="alert">
+        <p id={`${id}-error`} className="animate-in text-sm text-red-300 fade-in slide-in-from-top-1 duration-300" role="alert">
           {error}
         </p>
       ) : null}
@@ -125,7 +128,10 @@ function SelectField({
             </option>
           ))}
         </select>
-        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-imt-muted" aria-hidden />
+        <ChevronDown
+          className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-imt-muted transition-colors duration-300 group-focus-within/field:text-imt-accent"
+          aria-hidden
+        />
       </div>
     </Field>
   );
@@ -157,9 +163,13 @@ function SuccessView({
   }, []);
 
   return (
-    <div className="imt-card animate-in fade-in zoom-in-95 overflow-hidden p-6 duration-500 sm:p-10" role="status">
+    <div className="imt-card isolate animate-in overflow-hidden p-6 fade-in zoom-in-95 duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] sm:p-10" role="status">
       <div className="relative size-16">
-        <span aria-hidden="true" className="absolute inset-0 animate-ping rounded-full bg-imt-accent/30 [animation-iteration-count:2]" />
+        <span
+          aria-hidden="true"
+          className="absolute inset-0 animate-ping rounded-full bg-imt-accent/30 [animation-iteration-count:2] motion-reduce:hidden"
+        />
+        <span aria-hidden="true" className="absolute -inset-6 -z-10 rounded-full bg-imt-accent/20 blur-2xl" />
         <svg viewBox="0 0 48 48" className="relative size-16" aria-hidden="true">
           <circle cx="24" cy="24" r="22" fill="#A3E635" />
           <path
@@ -236,7 +246,13 @@ export function DiagnosticoForm({ calLink }: { calLink?: string }) {
   const goTo = (target: number) => {
     setDirection(target > step ? "forward" : "back");
     setStep(target);
-    requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    requestAnimationFrame(() => {
+      const form = formRef.current;
+      // Only scroll when the top of the form is out of view (avoids jumpy steps on desktop).
+      if (!form || form.getBoundingClientRect().top >= 0) return;
+      const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      form.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "start" });
+    });
   };
 
   // Server-side validation error: jump to the step of the first bad field.
@@ -244,9 +260,13 @@ export function DiagnosticoForm({ calLink }: { calLink?: string }) {
     if (state.status !== "error" || !state.fieldErrors) return;
     const first = FIELD_ORDER.find((key) => state.fieldErrors?.[key]);
     if (!first) return;
-    setDirection("back");
-    setStep(stepOf(first));
-    requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>(`[name="${first}"]`)?.focus());
+    // Deferred a frame so the step change is not a synchronous setState in the effect.
+    const frame = requestAnimationFrame(() => {
+      setDirection("back");
+      setStep(stepOf(first));
+      requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>(`[name="${first}"]`)?.focus());
+    });
+    return () => cancelAnimationFrame(frame);
   }, [state]);
 
   if (state.status === "success") {
@@ -289,31 +309,56 @@ export function DiagnosticoForm({ calLink }: { calLink?: string }) {
   const describedBy = (name: keyof FieldErrors) => (errors[name] ? `${id(name)}-error` : undefined);
   const panelClass = (i: number) =>
     cn(
-      "animate-in fade-in duration-500",
-      direction === "forward" ? "slide-in-from-right-8" : "slide-in-from-left-8",
+      "animate-in fade-in duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:[--tw-enter-translate-x:0]",
+      direction === "forward" ? "slide-in-from-right-6" : "slide-in-from-left-6",
       step !== i && "hidden",
     );
 
   return (
     <form ref={formRef} onSubmit={onSubmit} noValidate className="imt-card scroll-mt-28 p-6 sm:p-8" aria-describedby={id("required-note")}>
       {/* Progress */}
-      <ol className="grid grid-cols-3 gap-2" aria-label="Pasos del diagnóstico">
+      <ol className="grid grid-cols-3 gap-2 sm:gap-3" aria-label="Pasos del diagnóstico">
         {STEPS.map((s, i) => (
           <li key={s.title} aria-current={step === i ? "step" : undefined}>
             <span className="block h-1.5 overflow-hidden rounded-full bg-imt-border-solid">
               <span
-                className="block h-full rounded-full bg-imt-accent transition-transform duration-500 ease-out"
+                className={cn(
+                  "block h-full rounded-full bg-imt-accent transition-[transform,box-shadow] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                  i === step && "shadow-[0_0_12px_rgba(163,230,53,0.8)]",
+                )}
                 style={{ transform: `scaleX(${i <= step ? 1 : 0})`, transformOrigin: "0 50%" }}
               />
             </span>
-            <span className={cn("mt-2 block text-xs sm:text-sm", i === step ? "font-semibold text-imt-text" : "text-imt-muted")}>
-              {i + 1}. {s.title}
+            <span
+              className={cn(
+                "mt-2 flex items-center gap-1.5 text-xs leading-tight transition-colors duration-500 sm:text-sm",
+                i === step ? "font-semibold text-imt-text" : i < step ? "text-imt-accent" : "text-imt-muted",
+              )}
+            >
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "hidden size-5 shrink-0 items-center justify-center rounded-full border font-imt-mono text-[10px] transition-colors duration-500 sm:inline-flex",
+                  i < step
+                    ? "border-imt-accent bg-imt-accent text-imt-bg"
+                    : i === step
+                      ? "border-imt-accent text-imt-accent"
+                      : "border-imt-border",
+                )}
+              >
+                {i < step ? "✓" : i + 1}
+              </span>
+              <span>
+                <span className="sm:hidden">{i + 1}. </span>
+                {s.title}
+                {i < step ? <span className="sr-only"> (completado)</span> : null}
+              </span>
             </span>
           </li>
         ))}
       </ol>
 
-      <p id={id("required-note")} className="mt-5 text-sm text-imt-muted">
+      <p id={id("required-note")} className="mt-5 text-sm text-imt-muted" aria-live="polite">
         Paso {step + 1} de {STEPS.length}. Los campos con <span className="text-imt-accent">*</span> son obligatorios.
       </p>
 
@@ -372,7 +417,7 @@ export function DiagnosticoForm({ calLink }: { calLink?: string }) {
             {HERRAMIENTAS_OPTIONS.map((tool) => (
               <label
                 key={tool.value}
-                className="flex min-h-11 cursor-pointer items-center gap-2 rounded-full border border-imt-border bg-imt-bg px-4 text-sm text-imt-text transition-all duration-300 hover:border-imt-border-solid has-[:checked]:scale-[1.04] has-[:checked]:border-imt-accent has-[:checked]:text-imt-accent has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-imt-accent"
+                className="flex min-h-11 cursor-pointer items-center gap-2 rounded-full border border-imt-border bg-imt-bg px-4 text-sm text-imt-text transition-[transform,border-color,color,background-color] duration-300 ease-out hover:border-imt-border-solid active:scale-95 has-[:checked]:scale-[1.04] has-[:checked]:border-imt-accent has-[:checked]:bg-imt-accent/10 has-[:checked]:text-imt-accent motion-reduce:has-[:checked]:scale-100 has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-imt-accent"
               >
                 <input
                   type="checkbox"
@@ -386,7 +431,7 @@ export function DiagnosticoForm({ calLink }: { calLink?: string }) {
             ))}
           </div>
           {errors.herramientas ? (
-            <p id={`${id("herramientas")}-error`} className="mt-2 text-sm text-red-300" role="alert">
+            <p id={`${id("herramientas")}-error`} className="mt-2 animate-in text-sm text-red-300 fade-in duration-300" role="alert">
               {errors.herramientas}
             </p>
           ) : null}
@@ -419,14 +464,14 @@ export function DiagnosticoForm({ calLink }: { calLink?: string }) {
           />
         </Field>
 
-        <label className="mt-8 flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-imt-muted">
+        <label className="-mx-2 mt-6 flex cursor-pointer items-start gap-3 rounded-xl border border-transparent p-2 text-sm leading-relaxed text-imt-muted transition-colors duration-300 hover:border-imt-border has-[:checked]:text-imt-text has-[:focus-visible]:border-imt-accent">
           <input
             type="checkbox"
             name="consentimiento"
             required
             aria-invalid={errors.consentimiento ? true : undefined}
             aria-describedby={describedBy("consentimiento")}
-            className="mt-1 size-4 shrink-0 accent-[#A3E635]"
+            className="mt-0.5 size-5 shrink-0 accent-[#A3E635]"
           />
           <span>
             Autorizo a Alexander Cast · IA Master Tech a tratar mis datos personales para responder esta solicitud,
@@ -438,7 +483,7 @@ export function DiagnosticoForm({ calLink }: { calLink?: string }) {
           </span>
         </label>
         {errors.consentimiento ? (
-          <p id={`${id("consentimiento")}-error`} className="mt-2 text-sm text-red-300" role="alert">
+          <p id={`${id("consentimiento")}-error`} className="mt-2 animate-in text-sm text-red-300 fade-in duration-300" role="alert">
             {errors.consentimiento}
           </p>
         ) : null}

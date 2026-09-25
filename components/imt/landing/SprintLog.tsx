@@ -25,6 +25,8 @@ export function SprintLog() {
   const ref = useRef<HTMLDivElement>(null);
   const [entries, setEntries] = useState<Entry[]>(initialEntries);
   const [busy, setBusy] = useState(false);
+  // Only announce new entries once the visitor drives the log (auto-play would spam screen readers).
+  const [announce, setAnnounce] = useState(false);
   const busyRef = useRef(false);
   const nextIndex = useRef(VISIBLE);
   const userDriven = useRef(false);
@@ -70,7 +72,6 @@ export function SprintLog() {
       pending.forEach(clearTimeout);
     };
     // launch only touches refs and state setters, so it is safe to capture once.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -84,25 +85,34 @@ export function SprintLog() {
         <span className="font-imt-mono text-xs text-imt-muted">sprints.log · ejemplo ilustrativo</span>
       </div>
 
-      <ol className="space-y-1 p-4 font-imt-mono text-[12.5px] leading-relaxed sm:p-5 sm:text-[13px]" aria-live="polite">
+      <ol
+        className="space-y-1 p-3 font-imt-mono text-[12.5px] leading-relaxed sm:p-5 sm:text-[13px]"
+        aria-live={announce ? "polite" : "off"}
+      >
         {entries.map((entry) => (
           <li
             key={entry.id}
             className={cn(
-              "grid animate-in grid-cols-[auto_1fr] gap-x-3 rounded-lg px-2 py-2 fade-in slide-in-from-bottom-2 duration-500 sm:grid-cols-[auto_1fr_auto]",
-              entry.state === "running" && "bg-imt-elev",
+              "grid animate-in grid-cols-[auto_1fr] gap-x-3 rounded-lg px-2 py-2 transition-colors duration-700 fade-in slide-in-from-bottom-2 motion-reduce:slide-in-from-bottom-0 sm:grid-cols-[auto_1fr_auto]",
+              "[animation-duration:600ms] [animation-timing-function:cubic-bezier(0.22,1,0.36,1)]",
+              entry.state === "running" ? "bg-imt-elev" : "bg-transparent",
             )}
           >
             <span className="text-imt-muted">Sprint {String(entry.sprint).padStart(2, "0")}</span>
-            <span className="text-imt-text">{entry.task}</span>
-            <span className={cn("col-start-2 sm:col-start-auto", entry.state === "running" ? "text-imt-muted" : "text-imt-accent")}>
+            <span className="min-w-0 break-words text-imt-text">{entry.task}</span>
+            <span
+              className={cn(
+                "col-start-2 transition-colors duration-500 sm:col-start-auto",
+                entry.state === "running" ? "animate-pulse text-imt-muted motion-reduce:animate-none" : "text-imt-accent",
+              )}
+            >
               {entry.state === "running" ? "▸ en construcción…" : "✓ en producción"}
             </span>
           </li>
         ))}
       </ol>
 
-      <div className="flex items-center justify-between gap-3 border-t border-imt-border px-5 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-imt-border px-4 py-3 sm:px-5">
         <span className="flex items-center gap-2 font-imt-mono text-xs text-imt-muted">
           <span className="text-imt-accent">$</span> próxima entrega: viernes
           <span className="imt-caret inline-block h-3.5 w-1.5 bg-imt-accent" aria-hidden="true" />
@@ -111,10 +121,11 @@ export function SprintLog() {
           type="button"
           onClick={() => {
             userDriven.current = true;
+            setAnnounce(true);
             launch();
           }}
           disabled={busy}
-          className="inline-flex items-center gap-2 rounded-full bg-imt-accent px-4 py-2 text-sm font-semibold text-imt-bg transition-opacity hover:opacity-90 disabled:opacity-50"
+          className="inline-flex min-h-11 items-center gap-2 rounded-full bg-imt-accent px-5 py-2 text-sm font-semibold text-imt-bg transition-[opacity,transform] duration-300 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-imt-accent active:scale-95 disabled:opacity-50"
         >
           <Play className="size-3.5" aria-hidden />
           Lanzar sprint

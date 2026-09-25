@@ -26,37 +26,46 @@ export function StepsZigzag() {
       <h2 id="pasos-title" className="sr-only">
         Los tres pasos
       </h2>
-      <ol className="mx-auto flex w-full max-w-7xl flex-col gap-20 px-4 sm:gap-28 sm:px-6 lg:px-8">
+      <ol className="mx-auto flex w-full max-w-7xl flex-col gap-16 px-4 sm:gap-24 sm:px-6 lg:gap-28 lg:px-8">
         {STEPS.map((step, i) => {
           const Icon = STEP_ICONS[step.icon];
           const reversed = i % 2 === 1;
           return (
-            <li key={step.title} className="grid items-center gap-10 lg:grid-cols-2 lg:gap-20">
-              <figure className={cn("relative", reversed && "lg:order-2")}>
+            <li key={step.title} className="grid items-center gap-8 sm:gap-10 lg:grid-cols-2 lg:gap-20">
+              <figure className={cn("relative isolate mx-auto w-full max-w-xl lg:max-w-none", reversed && "lg:order-2")}>
+                {/* Soft glow behind the faded image edges, so the mask reads as intentional. */}
+                <div
+                  aria-hidden="true"
+                  className="absolute inset-[12%] -z-10 rounded-full bg-imt-accent/15 blur-3xl sm:blur-[80px]"
+                />
+                <div
+                  aria-hidden="true"
+                  className="imt-dots absolute inset-0 -z-10 opacity-60 lg:-inset-6"
+                />
                 <div data-reveal="" data-tilt="" className="imt-reveal-img relative aspect-[4/3]">
                   <Image
                     src={STEP_IMAGES[step.icon]}
                     alt={step.alt}
                     placeholder="blur"
                     fill
-                    sizes="(min-width: 1024px) 45vw, 100vw"
+                    sizes="(min-width: 1024px) 45vw, (min-width: 640px) 576px, 100vw"
                     className="imt-img-fade object-cover"
                   />
                 </div>
                 <span
                   aria-hidden="true"
-                  className="absolute -top-6 left-6 z-10 font-imt-display text-8xl font-bold leading-none text-imt-accent drop-shadow-[0_0_24px_rgba(163,230,53,0.6)] sm:text-9xl"
+                  className="absolute -top-4 left-2 z-10 font-imt-display text-7xl font-bold leading-none text-imt-accent drop-shadow-[0_0_24px_rgba(163,230,53,0.6)] sm:-top-6 sm:left-6 sm:text-9xl"
                 >
                   0{i + 1}
                 </span>
               </figure>
 
               <div data-reveal="" style={{ "--reveal-delay": "120ms" } as React.CSSProperties}>
-                <span className="inline-flex size-14 items-center justify-center rounded-2xl border border-imt-accent bg-imt-bg text-imt-accent">
+                <span className="inline-flex size-12 items-center justify-center rounded-2xl border border-imt-accent bg-imt-bg text-imt-accent sm:size-14">
                   <Icon className="size-6" strokeWidth={1.6} aria-hidden />
                 </span>
-                <h3 className="mt-6 text-4xl font-bold sm:text-5xl">{step.title}</h3>
-                <p className="mt-5 max-w-lg text-pretty text-lg leading-relaxed text-imt-muted sm:text-xl">{step.text}</p>
+                <h3 className="mt-5 text-3xl font-bold sm:mt-6 sm:text-5xl">{step.title}</h3>
+                <p className="mt-4 max-w-lg text-pretty text-base leading-relaxed text-imt-muted sm:mt-5 sm:text-xl">{step.text}</p>
                 <StepDetails items={STEP_DELIVERABLES[step.icon]} />
               </div>
             </li>
@@ -71,7 +80,7 @@ export function StepsZigzag() {
 export function WeeklyLog() {
   return (
     <section aria-labelledby="semana-title" className="relative py-16 sm:py-24">
-      <div className="mx-auto grid w-full max-w-7xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16 lg:px-8">
+      <div className="mx-auto grid w-full max-w-7xl items-center gap-8 px-4 sm:gap-10 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16 lg:px-8">
         <div data-reveal="">
           <Eyebrow>Una semana con nosotros</Eyebrow>
           <h2 id="semana-title" className="mt-4 text-balance text-4xl font-bold leading-[1.05] sm:text-5xl">
@@ -109,9 +118,9 @@ export function ResultsBento() {
           <h2 id="resultados-title" className="mt-4 max-w-3xl text-balance text-4xl font-bold leading-[1.05] sm:text-5xl">
             Sistemas que trabajan mientras tú vendes.
           </h2>
-          <p className="mt-4 text-imt-muted">Toca una tarjeta (o pasa el mouse) para ver un ejemplo.</p>
+          <p className="mt-4 text-imt-muted">Toca una tarjeta para ver un ejemplo real.</p>
         </header>
-        <ul className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
+        <ul className="mt-10 grid gap-4 sm:mt-12 sm:grid-cols-2 lg:grid-cols-6">
           {RESULTS.map((result, i) => {
             const Icon = RESULT_ICONS[result.icon];
             const featured = result.icon === "ownership";
@@ -124,6 +133,7 @@ export function ResultsBento() {
               >
                 <FlipCard
                   label={result.title}
+                  className="h-full"
                   featured={featured}
                   back={RESULT_EXAMPLES[result.icon]}
                   front={
@@ -137,7 +147,7 @@ export function ResultsBento() {
                         <Icon className="size-5" strokeWidth={1.6} aria-hidden />
                       </span>
                       <span>
-                        <span className="block font-imt-display text-xl font-bold text-imt-text">{result.title}</span>
+                        <span className="block font-imt-display text-lg font-bold text-imt-text sm:text-xl">{result.title}</span>
                         <span className="mt-2 block text-pretty leading-relaxed text-imt-muted">{result.text}</span>
                       </span>
                     </span>
