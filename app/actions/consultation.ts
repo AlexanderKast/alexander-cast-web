@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { consultationSchema } from "@/lib/validators";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { sendContactNotification } from "@/lib/resend";
-import { formLimiter, emailLimiter } from "@/lib/rate-limit";
+import { formLimiter, emailLimiter, clientIp } from "@/lib/rate-limit";
 import { logActivity } from "@/lib/admin/activity-logger";
 
 export type ConsultationState =
@@ -43,10 +43,7 @@ export async function consultationAction(
   const normalizedEmail = email.toLowerCase();
 
   const hdrs = await headers();
-  const ip =
-    hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    hdrs.get("x-real-ip") ??
-    "unknown";
+  const ip = clientIp(hdrs);
 
   const ipCheck = await formLimiter(`cs:ip:${ip}`);
   if (!ipCheck.success) {

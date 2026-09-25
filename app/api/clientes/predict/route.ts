@@ -1,5 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { predictSuggestions } from '@/lib/clientes/groq';
+import { clientIp, formLimiter } from '@/lib/rate-limit';
+import { isSameOriginStrict } from '@/lib/same-origin';
+
+/** 100 KB: the context sent for a suggestion is a handful of short fields. */
+const MAX_BODY = 100_000;
+
+const contextValue = z.union([
+  z.string().max(5_000),
+  z.array(z.string().max(1_000)).max(100),
+  z.number(),
+]);
+
+const predictSchema = z.object({
+  campo: z.string().max(60),
+  contexto: z.record(z.string().max(100), contextValue),
+});
 
 const CAMPO_CONFIGS: Record<string, { instruccion: string; n: number }> = {
   problemaPrincipal: {
@@ -25,13 +42,33 @@ const CAMPO_CONFIGS: Record<string, { instruccion: string; n: number }> = {
 };
 
 export async function POST(request: NextRequest) {
-  try {
-    const { campo, contexto } = await request.json() as {
-      campo: string;
-      contexto: Record<string, string | string[] | number>;
-    };
+  if (!isSameOriginStrict(request.headers)) {
+    return NextResponse.json({ sugerencias: [], error: 'Origen no permitido.' }, { status: 403 });
+  }
 
-    const config = CAMPO_CONFIGS[campo];
+  const declared = Number(request.headers.get('content-length') ?? 0);
+  if (declared > MAX_BODY) {
+    return NextResponse.json({ sugerencias: [], error: 'El envío es demasiado grande.' }, { status: 413 });
+  }
+
+  const limit = await formLimiter(`cl-predict:${clientIp(request.headers, '0.0.0.0')}`);
+  if (!limit.success) {
+    return NextResponse.json(
+      { sugerencias: [], error: 'Demasiadas solicitudes. Probá en un rato.' },
+      { status: 429 },
+    );
+  }
+
+  try {
+    const text = await request.text();
+    if (text.length > MAX_BODY) {
+      return NextResponse.json({ sugerencias: [], error: 'El envío es demasiado grande.' }, { status: 413 });
+    }
+    const parsed = predictSchema.safeParse(JSON.parse(text));
+    if (!parsed.success) return NextResponse.json({ sugerencias: [] });
+    const { campo, contexto } = parsed.data;
+
+    const config = Object.hasOwn(CAMPO_CONFIGS, campo) ? CAMPO_CONFIGS[campo] : undefined;
     if (!config) return NextResponse.json({ sugerencias: [] });
 
     const sugerencias = await predictSuggestions({
@@ -42,7 +79,8 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ sugerencias });
-  } catch {
+  } catch (error) {
+    console.error('[clientes/predict]', error instanceof Error ? error.message : error);
     return NextResponse.json({ sugerencias: [] });
   }
 }

@@ -31,9 +31,8 @@ const nextConfig: NextConfig = {
     root: path.resolve(__dirname),
   },
   images: {
-    // Security stopgap: AVIF optimization in next 16.2.4 has a critical RCE.
-    // Re-add "image/avif" once `next` is upgraded to >=16.3.6.
-    formats: ["image/webp"],
+    // AVIF re-enabled: the image-optimizer RCE (GHSA-2xp9-vwfh-vxw4) is fixed in next >=16.3.3.
+    formats: ["image/avif", "image/webp"],
   },
   experimental: {
     optimizePackageImports: ["lucide-react", "framer-motion"],

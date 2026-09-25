@@ -18,12 +18,14 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
               Portal
             </span>
           </Link>
-          <Link
-            href="/portal/logout"
-            className="text-xs text-white/40 hover:text-white/70 transition-colors"
-          >
-            Cerrar sesión
-          </Link>
+          <form action="/portal/logout" method="post">
+            <button
+              type="submit"
+              className="text-xs text-white/40 hover:text-white/70 transition-colors"
+            >
+              Cerrar sesión
+            </button>
+          </form>
         </div>
       </header>
       <main className="max-w-6xl mx-auto px-6 py-10">

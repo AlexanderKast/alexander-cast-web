@@ -199,7 +199,7 @@ export function ChaosToSystem() {
 
   return (
     <section ref={sectionRef} aria-labelledby="caos-title" className="relative h-[200vh] sm:h-[260vh]">
-      <div className="sticky top-0 flex h-[100svh] flex-col overflow-hidden pb-3 pt-[76px] sm:pb-6 sm:pt-24">
+      <div className="sticky top-0 flex h-[100svh] flex-col overflow-hidden pb-3 pt-[76px] sm:pb-20 sm:pt-24">
         <div className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col px-4 sm:px-6 lg:px-8">
           {/* Compact header: it must never push the stage off-screen, so it shrinks first on short viewports. */}
           <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-5">

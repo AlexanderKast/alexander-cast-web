@@ -1,7 +1,7 @@
 import { createHmac } from 'node:crypto';
 import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
-import { formLimiter } from '@/lib/rate-limit';
+import { clientIp, formLimiter } from '@/lib/rate-limit';
 import { hostDeLaBase } from '@/lib/supabase/server';
 import { supabaseBrief } from '@/lib/brief/cliente-publico';
 import { resolverCliente, validarRespuestas } from '@/lib/brief/schema';
@@ -30,10 +30,8 @@ const envioSchema = z.object({
 });
 
 function ipDe(req: NextRequest): string {
-  const cabecera =
-    req.headers.get('cf-connecting-ip') ?? req.headers.get('x-forwarded-for') ?? '';
-  const primera = cabecera.split(',')[0]?.trim();
-  return primera || '0.0.0.0';
+  // cf-connecting-ip is not trusted: without Cloudflare the client sets it.
+  return clientIp(req.headers, '0.0.0.0');
 }
 
 /** La IP nunca se guarda en claro. */

@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { resumirTexto, transcribirIdea } from "@/lib/ideas/gemini";
 import { normalizarCodigo } from "@/lib/ideas/tipos";
@@ -331,9 +331,18 @@ async function procesar(msg: MensajeTelegram): Promise<void> {
   await responder(chatId, AYUDA);
 }
 
-export async function POST(req: NextRequest) {
+/** Constant-time secret comparison; fails closed when anything is missing. */
+function secretoValido(recibido: string | null): boolean {
   const secreto = process.env.TELEGRAM_WEBHOOK_SECRET;
-  if (!secreto || req.headers.get("x-telegram-bot-api-secret-token") !== secreto) {
+  if (!secreto || !recibido) return false;
+  const a = Buffer.from(recibido, "utf8");
+  const b = Buffer.from(secreto, "utf8");
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
+
+export async function POST(req: NextRequest) {
+  if (!secretoValido(req.headers.get("x-telegram-bot-api-secret-token"))) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
 

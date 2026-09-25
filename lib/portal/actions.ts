@@ -1,7 +1,9 @@
 'use server';
 
 import { createSupabaseServer, createSupabaseServiceRole } from '@/lib/supabase/server';
-import { requireAuth } from '@/lib/auth';
+import { z } from 'zod';
+import { requireAuth, type Role } from '@/lib/auth';
+import { puedeEditarProyectos, puedeGestionarConfiguracion } from '@/lib/proyectos/permisos';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import type {
@@ -23,6 +25,31 @@ import type {
 
 const sb = () => createSupabaseServiceRole();
 
+const SIN_PERMISO = 'Sin permiso para esta acción.';
+const ERROR_GUARDAR = 'No se pudo guardar el cambio. Intenta de nuevo.';
+const DATOS_INVALIDOS = 'Datos inválidos.';
+
+// Requires an active admin (requireAuth) whose role passes `check`.
+// Returns the error payload to send back, or null when allowed.
+async function denyUnless(check: (rol: Role) => boolean): Promise<{ error: string } | null> {
+  const user = await requireAuth();
+  return check(user.role) ? null : { error: SIN_PERMISO };
+}
+
+// Never leak raw Postgres errors to the client; log them server-side.
+function dbError(action: string, error: { message: string }): { error: string } {
+  console.error(`[portal] ${action}:`, error.message);
+  return { error: ERROR_GUARDAR };
+}
+
+// Columns a caller can never set: identity, tenant and timestamps.
+const PROTECTED_KEYS = new Set(['id', 'client_id', 'created_at', 'updated_at']);
+function withoutProtectedKeys(input: object | null | undefined): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(input ?? {}).filter(([key]) => !PROTECTED_KEYS.has(key)),
+  );
+}
+
 // Verifica sesión activa (admin O cliente portal). Retorna el user.id.
 // requireAuth() de lib/auth.ts requiere admin_users — no usar para reads del portal.
 async function requireAnyAuth(): Promise<string> {
@@ -34,16 +61,20 @@ async function requireAnyAuth(): Promise<string> {
 
 // Verifica que el usuario es admin O es miembro editor activo del clientId específico.
 // Usar en acciones de escritura que reciben clientId como parámetro (previene IDOR).
-async function requireClientAccess(clientId: string): Promise<void> {
+// Returns false when the user is an admin whose role cannot edit (e.g. tester)
+// and is not an editor of this client; callers must then deny the action.
+async function requireClientAccess(clientId: string): Promise<boolean> {
   const userId = await requireAnyAuth();
   const [adminRow, memberRow] = await Promise.all([
-    sb().from('admin_users').select('id').eq('auth_user_id', userId).eq('is_active', true).maybeSingle(),
+    sb().from('admin_users').select('id, role').eq('auth_user_id', userId).eq('is_active', true).maybeSingle(),
     sb().from('portal_client_users').select('id, rol')
       .eq('auth_user_id', userId).eq('client_id', clientId).eq('activo', true).maybeSingle(),
   ]);
   const isAdmin = !!adminRow.data;
   const isEditor = !!(memberRow.data && (memberRow.data as { rol: string }).rol === 'editor');
   if (!isAdmin && !isEditor) redirect('/portal/login');
+  const adminCanEdit = isAdmin && puedeEditarProyectos((adminRow.data as { role: Role }).role);
+  return adminCanEdit || isEditor;
 }
 
 // ── Clients ──────────────────────────────────────────────────
@@ -55,17 +86,6 @@ export async function getClients(): Promise<PortalClient[]> {
     .select('*')
     .order('nombre');
   return (data ?? []) as PortalClient[];
-}
-
-// Solo columnas no-PII — safe para llamar desde generateMetadata (sin auth).
-// Campos sensibles (contacto_email, notas, etc.) no se exponen aquí.
-export async function getClientBySlug(slug: string): Promise<Pick<PortalClient, 'id' | 'nombre' | 'slug' | 'logo_url' | 'activo'> | null> {
-  const { data } = await sb()
-    .from('portal_clients')
-    .select('id, nombre, slug, logo_url, activo')
-    .eq('slug', slug)
-    .single();
-  return data as Pick<PortalClient, 'id' | 'nombre' | 'slug' | 'logo_url' | 'activo'> | null;
 }
 
 export async function getClientById(id: string): Promise<PortalClient | null> {
@@ -86,13 +106,14 @@ export async function createClient(input: {
   contacto_nombre?: string;
   notas?: string;
 }): Promise<{ id: string } | { error: string }> {
-  await requireAuth(); // admin only
+  const denied = await denyUnless(puedeGestionarConfiguracion);
+  if (denied) return denied;
   const { data, error } = await sb()
     .from('portal_clients')
-    .insert(input)
+    .insert(withoutProtectedKeys(input))
     .select('id')
     .single();
-  if (error) return { error: error.message };
+  if (error) return dbError('createClient', error);
   revalidatePath('/admin/clientes');
   return { id: data.id as string };
 }
@@ -101,21 +122,23 @@ export async function updateClient(
   id: string,
   input: Partial<Omit<PortalClient, 'id' | 'created_at' | 'updated_at'>>,
 ): Promise<{ error?: string }> {
-  await requireAuth(); // admin only
+  const denied = await denyUnless(puedeGestionarConfiguracion);
+  if (denied) return denied;
   const { error } = await sb()
     .from('portal_clients')
-    .update({ ...input, updated_at: new Date().toISOString() })
+    .update({ ...withoutProtectedKeys(input), updated_at: new Date().toISOString() })
     .eq('id', id);
-  if (error) return { error: error.message };
+  if (error) return dbError('updateClient', error);
   revalidatePath('/admin/clientes');
   revalidatePath(`/admin/clientes/${id}`);
   return {};
 }
 
 export async function deleteClient(id: string): Promise<{ error?: string }> {
-  await requireAuth(); // admin only
+  const denied = await denyUnless(puedeGestionarConfiguracion);
+  if (denied) return denied;
   const { error } = await sb().from('portal_clients').delete().eq('id', id);
-  if (error) return { error: error.message };
+  if (error) return dbError('deleteClient', error);
   revalidatePath('/admin/clientes');
   return {};
 }
@@ -167,13 +190,14 @@ export async function createCampaign(
   clientId: string,
   input: Partial<Omit<Campaign, 'id' | 'client_id' | 'created_at' | 'updated_at'>>,
 ): Promise<{ id: string } | { error: string }> {
-  await requireAuth();
+  const denied = await denyUnless(puedeEditarProyectos);
+  if (denied) return denied;
   const { data, error } = await sb()
     .from('portal_campaigns')
-    .insert({ ...input, client_id: clientId })
+    .insert({ ...withoutProtectedKeys(input), client_id: clientId })
     .select('id')
     .single();
-  if (error) return { error: error.message };
+  if (error) return dbError('createCampaign', error);
   revalidatePath(`/admin/clientes/${clientId}`);
   return { id: data.id as string };
 }
@@ -183,25 +207,27 @@ export async function updateCampaign(
   clientId: string,
   input: Partial<Campaign>,
 ): Promise<{ error?: string }> {
-  await requireAuth();
+  const denied = await denyUnless(puedeEditarProyectos);
+  if (denied) return denied;
   const { error } = await sb()
     .from('portal_campaigns')
-    .update({ ...input, updated_at: new Date().toISOString() })
+    .update({ ...withoutProtectedKeys(input), updated_at: new Date().toISOString() })
     .eq('id', id)
     .eq('client_id', clientId); // prevent cross-tenant mutation
-  if (error) return { error: error.message };
+  if (error) return dbError('updateCampaign', error);
   revalidatePath(`/admin/clientes/${clientId}`);
   return {};
 }
 
 export async function deleteCampaign(id: string, clientId: string): Promise<{ error?: string }> {
-  await requireAuth();
+  const denied = await denyUnless(puedeEditarProyectos);
+  if (denied) return denied;
   const { error } = await sb()
     .from('portal_campaigns')
     .delete()
     .eq('id', id)
     .eq('client_id', clientId);
-  if (error) return { error: error.message };
+  if (error) return dbError('deleteCampaign', error);
   revalidatePath(`/admin/clientes/${clientId}`);
   return {};
 }
@@ -212,13 +238,14 @@ export async function createProject(
   clientId: string,
   input: Partial<Omit<Project, 'id' | 'client_id' | 'created_at' | 'updated_at'>>,
 ): Promise<{ id: string } | { error: string }> {
-  await requireAuth();
+  const denied = await denyUnless(puedeEditarProyectos);
+  if (denied) return denied;
   const { data, error } = await sb()
     .from('portal_projects')
-    .insert({ ...input, client_id: clientId })
+    .insert({ ...withoutProtectedKeys(input), client_id: clientId })
     .select('id')
     .single();
-  if (error) return { error: error.message };
+  if (error) return dbError('createProject', error);
   revalidatePath(`/admin/clientes/${clientId}`);
   return { id: data.id as string };
 }
@@ -228,25 +255,27 @@ export async function updateProject(
   clientId: string,
   input: Partial<Project>,
 ): Promise<{ error?: string }> {
-  await requireAuth();
+  const denied = await denyUnless(puedeEditarProyectos);
+  if (denied) return denied;
   const { error } = await sb()
     .from('portal_projects')
-    .update({ ...input, updated_at: new Date().toISOString() })
+    .update({ ...withoutProtectedKeys(input), updated_at: new Date().toISOString() })
     .eq('id', id)
     .eq('client_id', clientId);
-  if (error) return { error: error.message };
+  if (error) return dbError('updateProject', error);
   revalidatePath(`/admin/clientes/${clientId}`);
   return {};
 }
 
 export async function deleteProject(id: string, clientId: string): Promise<{ error?: string }> {
-  await requireAuth();
+  const denied = await denyUnless(puedeEditarProyectos);
+  if (denied) return denied;
   const { error } = await sb()
     .from('portal_projects')
     .delete()
     .eq('id', id)
     .eq('client_id', clientId);
-  if (error) return { error: error.message };
+  if (error) return dbError('deleteProject', error);
   revalidatePath(`/admin/clientes/${clientId}`);
   return {};
 }
@@ -257,13 +286,14 @@ export async function createObjective(
   clientId: string,
   input: Partial<Omit<Objective, 'id' | 'client_id' | 'created_at' | 'updated_at'>>,
 ): Promise<{ id: string } | { error: string }> {
-  await requireAuth();
+  const denied = await denyUnless(puedeEditarProyectos);
+  if (denied) return denied;
   const { data, error } = await sb()
     .from('portal_objectives')
-    .insert({ ...input, client_id: clientId })
+    .insert({ ...withoutProtectedKeys(input), client_id: clientId })
     .select('id')
     .single();
-  if (error) return { error: error.message };
+  if (error) return dbError('createObjective', error);
   revalidatePath(`/admin/clientes/${clientId}`);
   return { id: data.id as string };
 }
@@ -273,25 +303,27 @@ export async function updateObjective(
   clientId: string,
   input: Partial<Objective>,
 ): Promise<{ error?: string }> {
-  await requireAuth();
+  const denied = await denyUnless(puedeEditarProyectos);
+  if (denied) return denied;
   const { error } = await sb()
     .from('portal_objectives')
-    .update({ ...input, updated_at: new Date().toISOString() })
+    .update({ ...withoutProtectedKeys(input), updated_at: new Date().toISOString() })
     .eq('id', id)
     .eq('client_id', clientId);
-  if (error) return { error: error.message };
+  if (error) return dbError('updateObjective', error);
   revalidatePath(`/admin/clientes/${clientId}`);
   return {};
 }
 
 export async function deleteObjective(id: string, clientId: string): Promise<{ error?: string }> {
-  await requireAuth();
+  const denied = await denyUnless(puedeEditarProyectos);
+  if (denied) return denied;
   const { error } = await sb()
     .from('portal_objectives')
     .delete()
     .eq('id', id)
     .eq('client_id', clientId);
-  if (error) return { error: error.message };
+  if (error) return dbError('deleteObjective', error);
   revalidatePath(`/admin/clientes/${clientId}`);
   return {};
 }
@@ -302,13 +334,14 @@ export async function createEvent(
   clientId: string,
   input: Partial<Omit<PortalEvent, 'id' | 'client_id' | 'created_at' | 'updated_at'>>,
 ): Promise<{ id: string } | { error: string }> {
-  await requireAuth();
+  const denied = await denyUnless(puedeEditarProyectos);
+  if (denied) return denied;
   const { data, error } = await sb()
     .from('portal_events')
-    .insert({ ...input, client_id: clientId })
+    .insert({ ...withoutProtectedKeys(input), client_id: clientId })
     .select('id')
     .single();
-  if (error) return { error: error.message };
+  if (error) return dbError('createEvent', error);
   revalidatePath(`/admin/clientes/${clientId}`);
   return { id: data.id as string };
 }
@@ -318,25 +351,27 @@ export async function updateEvent(
   clientId: string,
   input: Partial<PortalEvent>,
 ): Promise<{ error?: string }> {
-  await requireAuth();
+  const denied = await denyUnless(puedeEditarProyectos);
+  if (denied) return denied;
   const { error } = await sb()
     .from('portal_events')
-    .update({ ...input, updated_at: new Date().toISOString() })
+    .update({ ...withoutProtectedKeys(input), updated_at: new Date().toISOString() })
     .eq('id', id)
     .eq('client_id', clientId);
-  if (error) return { error: error.message };
+  if (error) return dbError('updateEvent', error);
   revalidatePath(`/admin/clientes/${clientId}`);
   return {};
 }
 
 export async function deleteEvent(id: string, clientId: string): Promise<{ error?: string }> {
-  await requireAuth();
+  const denied = await denyUnless(puedeEditarProyectos);
+  if (denied) return denied;
   const { error } = await sb()
     .from('portal_events')
     .delete()
     .eq('id', id)
     .eq('client_id', clientId);
-  if (error) return { error: error.message };
+  if (error) return dbError('deleteEvent', error);
   revalidatePath(`/admin/clientes/${clientId}`);
   return {};
 }
@@ -347,13 +382,14 @@ export async function createSocialPost(
   clientId: string,
   input: Partial<Omit<SocialPost, 'id' | 'client_id' | 'created_at' | 'updated_at'>>,
 ): Promise<{ id: string } | { error: string }> {
-  await requireAuth();
+  const denied = await denyUnless(puedeEditarProyectos);
+  if (denied) return denied;
   const { data, error } = await sb()
     .from('portal_social_posts')
-    .insert({ ...input, client_id: clientId })
+    .insert({ ...withoutProtectedKeys(input), client_id: clientId })
     .select('id')
     .single();
-  if (error) return { error: error.message };
+  if (error) return dbError('createSocialPost', error);
   revalidatePath(`/admin/clientes/${clientId}`);
   return { id: data.id as string };
 }
@@ -363,25 +399,27 @@ export async function updateSocialPost(
   clientId: string,
   input: Partial<SocialPost>,
 ): Promise<{ error?: string }> {
-  await requireAuth();
+  const denied = await denyUnless(puedeEditarProyectos);
+  if (denied) return denied;
   const { error } = await sb()
     .from('portal_social_posts')
-    .update({ ...input, updated_at: new Date().toISOString() })
+    .update({ ...withoutProtectedKeys(input), updated_at: new Date().toISOString() })
     .eq('id', id)
     .eq('client_id', clientId);
-  if (error) return { error: error.message };
+  if (error) return dbError('updateSocialPost', error);
   revalidatePath(`/admin/clientes/${clientId}`);
   return {};
 }
 
 export async function deleteSocialPost(id: string, clientId: string): Promise<{ error?: string }> {
-  await requireAuth();
+  const denied = await denyUnless(puedeEditarProyectos);
+  if (denied) return denied;
   const { error } = await sb()
     .from('portal_social_posts')
     .delete()
     .eq('id', id)
     .eq('client_id', clientId);
-  if (error) return { error: error.message };
+  if (error) return dbError('deleteSocialPost', error);
   revalidatePath(`/admin/clientes/${clientId}`);
   return {};
 }
@@ -392,13 +430,14 @@ export async function createEditorialItem(
   clientId: string,
   input: Partial<Omit<EditorialItem, 'id' | 'client_id' | 'created_at' | 'updated_at'>>,
 ): Promise<{ id: string } | { error: string }> {
-  await requireAuth();
+  const denied = await denyUnless(puedeEditarProyectos);
+  if (denied) return denied;
   const { data, error } = await sb()
     .from('portal_editorial')
-    .insert({ ...input, client_id: clientId })
+    .insert({ ...withoutProtectedKeys(input), client_id: clientId })
     .select('id')
     .single();
-  if (error) return { error: error.message };
+  if (error) return dbError('createEditorialItem', error);
   revalidatePath(`/admin/clientes/${clientId}`);
   return { id: data.id as string };
 }
@@ -408,25 +447,27 @@ export async function updateEditorialItem(
   clientId: string,
   input: Partial<EditorialItem>,
 ): Promise<{ error?: string }> {
-  await requireAuth();
+  const denied = await denyUnless(puedeEditarProyectos);
+  if (denied) return denied;
   const { error } = await sb()
     .from('portal_editorial')
-    .update({ ...input, updated_at: new Date().toISOString() })
+    .update({ ...withoutProtectedKeys(input), updated_at: new Date().toISOString() })
     .eq('id', id)
     .eq('client_id', clientId);
-  if (error) return { error: error.message };
+  if (error) return dbError('updateEditorialItem', error);
   revalidatePath(`/admin/clientes/${clientId}`);
   return {};
 }
 
 export async function deleteEditorialItem(id: string, clientId: string): Promise<{ error?: string }> {
-  await requireAuth();
+  const denied = await denyUnless(puedeEditarProyectos);
+  if (denied) return denied;
   const { error } = await sb()
     .from('portal_editorial')
     .delete()
     .eq('id', id)
     .eq('client_id', clientId);
-  if (error) return { error: error.message };
+  if (error) return dbError('deleteEditorialItem', error);
   revalidatePath(`/admin/clientes/${clientId}`);
   return {};
 }
@@ -437,13 +478,14 @@ export async function createAdAccount(
   clientId: string,
   input: Partial<Omit<AdAccount, 'id' | 'client_id' | 'created_at' | 'updated_at'>>,
 ): Promise<{ id: string } | { error: string }> {
-  await requireAuth();
+  const denied = await denyUnless(puedeEditarProyectos);
+  if (denied) return denied;
   const { data, error } = await sb()
     .from('portal_ad_accounts')
-    .insert({ ...input, client_id: clientId })
+    .insert({ ...withoutProtectedKeys(input), client_id: clientId })
     .select('id')
     .single();
-  if (error) return { error: error.message };
+  if (error) return dbError('createAdAccount', error);
   revalidatePath(`/admin/clientes/${clientId}`);
   return { id: data.id as string };
 }
@@ -453,25 +495,27 @@ export async function updateAdAccount(
   clientId: string,
   input: Partial<AdAccount>,
 ): Promise<{ error?: string }> {
-  await requireAuth();
+  const denied = await denyUnless(puedeEditarProyectos);
+  if (denied) return denied;
   const { error } = await sb()
     .from('portal_ad_accounts')
-    .update({ ...input, updated_at: new Date().toISOString() })
+    .update({ ...withoutProtectedKeys(input), updated_at: new Date().toISOString() })
     .eq('id', id)
     .eq('client_id', clientId);
-  if (error) return { error: error.message };
+  if (error) return dbError('updateAdAccount', error);
   revalidatePath(`/admin/clientes/${clientId}`);
   return {};
 }
 
 export async function deleteAdAccount(id: string, clientId: string): Promise<{ error?: string }> {
-  await requireAuth();
+  const denied = await denyUnless(puedeEditarProyectos);
+  if (denied) return denied;
   const { error } = await sb()
     .from('portal_ad_accounts')
     .delete()
     .eq('id', id)
     .eq('client_id', clientId);
-  if (error) return { error: error.message };
+  if (error) return dbError('deleteAdAccount', error);
   revalidatePath(`/admin/clientes/${clientId}`);
   return {};
 }
@@ -482,13 +526,14 @@ export async function createTool(
   clientId: string,
   input: Partial<Omit<Tool, 'id' | 'client_id' | 'created_at' | 'updated_at'>>,
 ): Promise<{ id: string } | { error: string }> {
-  await requireAuth();
+  const denied = await denyUnless(puedeEditarProyectos);
+  if (denied) return denied;
   const { data, error } = await sb()
     .from('portal_tools')
-    .insert({ ...input, client_id: clientId })
+    .insert({ ...withoutProtectedKeys(input), client_id: clientId })
     .select('id')
     .single();
-  if (error) return { error: error.message };
+  if (error) return dbError('createTool', error);
   revalidatePath(`/admin/clientes/${clientId}`);
   return { id: data.id as string };
 }
@@ -498,30 +543,42 @@ export async function updateTool(
   clientId: string,
   input: Partial<Tool>,
 ): Promise<{ error?: string }> {
-  await requireAuth();
+  const denied = await denyUnless(puedeEditarProyectos);
+  if (denied) return denied;
   const { error } = await sb()
     .from('portal_tools')
-    .update({ ...input, updated_at: new Date().toISOString() })
+    .update({ ...withoutProtectedKeys(input), updated_at: new Date().toISOString() })
     .eq('id', id)
     .eq('client_id', clientId);
-  if (error) return { error: error.message };
+  if (error) return dbError('updateTool', error);
   revalidatePath(`/admin/clientes/${clientId}`);
   return {};
 }
 
 export async function deleteTool(id: string, clientId: string): Promise<{ error?: string }> {
-  await requireAuth();
+  const denied = await denyUnless(puedeEditarProyectos);
+  if (denied) return denied;
   const { error } = await sb()
     .from('portal_tools')
     .delete()
     .eq('id', id)
     .eq('client_id', clientId);
-  if (error) return { error: error.message };
+  if (error) return dbError('deleteTool', error);
   revalidatePath(`/admin/clientes/${clientId}`);
   return {};
 }
 
 // ── Portal client auth helpers ────────────────────────────────
+
+const clientUserSchema = z
+  .object({
+    auth_user_id: z.string().min(1).max(100),
+    client_id: z.string().min(1).max(100),
+    email: z.string().max(320),
+    nombre: z.string().max(200).optional(),
+    rol: z.enum(['viewer', 'editor']).optional(),
+  })
+  .strict();
 
 export async function createClientUser(input: {
   auth_user_id: string;
@@ -530,9 +587,12 @@ export async function createClientUser(input: {
   nombre?: string;
   rol?: 'viewer' | 'editor';
 }): Promise<{ error?: string }> {
-  await requireAuth(); // admin only — requireAuth ya verifica admin_users
-  const { error } = await sb().from('portal_client_users').insert(input);
-  if (error) return { error: error.message };
+  const denied = await denyUnless(puedeGestionarConfiguracion);
+  if (denied) return denied;
+  const parsed = clientUserSchema.safeParse(input);
+  if (!parsed.success) return { error: DATOS_INVALIDOS };
+  const { error } = await sb().from('portal_client_users').insert(parsed.data);
+  if (error) return dbError('createClientUser', error);
   return {};
 }
 
@@ -548,17 +608,39 @@ export async function getClientUsers(clientId: string) {
 
 // ── Tasks ────────────────────────────────────────────────────
 
+// Whitelist of task columns a caller may write (client_id/id/timestamps excluded).
+const nullableText = (max: number) => z.string().max(max).nullable();
+const taskInputSchema = z
+  .object({
+    titulo: z.string().max(300),
+    descripcion: nullableText(10_000),
+    tipo_entregable: nullableText(200),
+    asignado_a: nullableText(200),
+    estado: z.enum(['Pendiente', 'En progreso', 'En revisión', 'Aprobado', 'Entregado']),
+    prioridad: z.enum(['Alta', 'Media', 'Baja']),
+    fecha_limite: nullableText(40),
+    fecha_entrega: nullableText(40),
+    link_entrega: nullableText(2_000),
+    notas: nullableText(10_000),
+    entity_type: nullableText(40),
+    entity_id: nullableText(100),
+  })
+  .partial()
+  .strict();
+
 export async function createTask(
   clientId: string,
   input: Partial<Omit<PortalTask, 'id' | 'client_id' | 'created_at' | 'updated_at'>>,
 ): Promise<{ id: string } | { error: string }> {
-  await requireClientAccess(clientId);
+  if (!(await requireClientAccess(clientId))) return { error: SIN_PERMISO };
+  const parsed = taskInputSchema.safeParse(input);
+  if (!parsed.success) return { error: DATOS_INVALIDOS };
   const { data, error } = await sb()
     .from('portal_tasks')
-    .insert({ ...input, client_id: clientId })
+    .insert({ ...parsed.data, client_id: clientId })
     .select('id')
     .single();
-  if (error) return { error: error.message };
+  if (error) return dbError('createTask', error);
   revalidatePath(`/admin/clientes/${clientId}`);
   return { id: data.id as string };
 }
@@ -568,42 +650,67 @@ export async function updateTask(
   clientId: string,
   input: Partial<PortalTask>,
 ): Promise<{ error?: string }> {
-  await requireClientAccess(clientId);
+  if (!(await requireClientAccess(clientId))) return { error: SIN_PERMISO };
+  const parsed = taskInputSchema.safeParse(input);
+  if (!parsed.success) return { error: DATOS_INVALIDOS };
   const { error } = await sb()
     .from('portal_tasks')
-    .update({ ...input, updated_at: new Date().toISOString() })
+    .update({ ...parsed.data, updated_at: new Date().toISOString() })
     .eq('id', id)
     .eq('client_id', clientId);
-  if (error) return { error: error.message };
+  if (error) return dbError('updateTask', error);
   revalidatePath(`/admin/clientes/${clientId}`);
   return {};
 }
 
 export async function deleteTask(id: string, clientId: string): Promise<{ error?: string }> {
-  await requireClientAccess(clientId);
+  if (!(await requireClientAccess(clientId))) return { error: SIN_PERMISO };
   const { error } = await sb()
     .from('portal_tasks')
     .delete()
     .eq('id', id)
     .eq('client_id', clientId);
-  if (error) return { error: error.message };
+  if (error) return dbError('deleteTask', error);
   revalidatePath(`/admin/clientes/${clientId}`);
   return {};
 }
 
 // ── Field Defs ───────────────────────────────────────────────
 
+const FIELD_TYPES = ['text', 'number', 'date', 'select', 'multiselect', 'url', 'checkbox'] as const satisfies readonly FieldType[];
+const ENTITY_TYPES = [
+  'campaign', 'project', 'objective', 'event',
+  'social_post', 'editorial', 'tool', 'ad_account',
+] as const satisfies readonly EntityType[];
+
+const fieldDefUpdateSchema = z
+  .object({
+    name: z.string().trim().min(1).max(100),
+    field_type: z.enum(FIELD_TYPES),
+    options: z.array(z.string().max(200)).max(100),
+    position: z.number().int().min(0).max(100_000),
+  })
+  .partial()
+  .strict();
+
+const fieldDefCreateSchema = fieldDefUpdateSchema
+  .required({ name: true, field_type: true })
+  .extend({ entity_type: z.enum(ENTITY_TYPES) })
+  .strict();
+
 export async function createFieldDef(
   clientId: string,
   input: { name: string; entity_type: EntityType; field_type: FieldType; options?: string[]; position?: number },
 ): Promise<{ id: string } | { error: string }> {
-  await requireClientAccess(clientId);
+  if (!(await requireClientAccess(clientId))) return { error: SIN_PERMISO };
+  const parsed = fieldDefCreateSchema.safeParse(input);
+  if (!parsed.success) return { error: DATOS_INVALIDOS };
   const { data, error } = await sb()
     .from('portal_field_defs')
-    .insert({ ...input, client_id: clientId, options: input.options ?? [] })
+    .insert({ ...parsed.data, client_id: clientId, options: parsed.data.options ?? [] })
     .select('id')
     .single();
-  if (error) return { error: error.message };
+  if (error) return dbError('createFieldDef', error);
   revalidatePath(`/admin/clientes/${clientId}`);
   return { id: data.id as string };
 }
@@ -613,25 +720,27 @@ export async function updateFieldDef(
   clientId: string,
   input: Partial<Pick<PortalFieldDef, 'name' | 'field_type' | 'options' | 'position'>>,
 ): Promise<{ error?: string }> {
-  await requireClientAccess(clientId);
+  if (!(await requireClientAccess(clientId))) return { error: SIN_PERMISO };
+  const parsed = fieldDefUpdateSchema.safeParse(input);
+  if (!parsed.success) return { error: DATOS_INVALIDOS };
   const { error } = await sb()
     .from('portal_field_defs')
-    .update(input)
+    .update(parsed.data)
     .eq('id', id)
     .eq('client_id', clientId);
-  if (error) return { error: error.message };
+  if (error) return dbError('updateFieldDef', error);
   revalidatePath(`/admin/clientes/${clientId}`);
   return {};
 }
 
 export async function deleteFieldDef(id: string, clientId: string): Promise<{ error?: string }> {
-  await requireClientAccess(clientId);
+  if (!(await requireClientAccess(clientId))) return { error: SIN_PERMISO };
   const { error } = await sb()
     .from('portal_field_defs')
     .delete()
     .eq('id', id)
     .eq('client_id', clientId);
-  if (error) return { error: error.message };
+  if (error) return dbError('deleteFieldDef', error);
   revalidatePath(`/admin/clientes/${clientId}`);
   return {};
 }

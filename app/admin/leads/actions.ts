@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/auth";
 import { createSupabaseServiceRole } from "@/lib/supabase/server";
 import { logActivity } from "@/lib/admin/activity-logger";
+import { puedeEditarProyectos } from "@/lib/proyectos/permisos";
 
 const VALID_STAGES = [
   "nuevo",
@@ -24,6 +25,10 @@ export async function updateLeadStage({
   stage: string;
 }): Promise<Result> {
   const user = await requireAuth();
+  // Read-only roles (tester) can see leads but not move them.
+  if (!puedeEditarProyectos(user.role)) {
+    return { ok: false, error: "Sin permiso para esta acción." };
+  }
   if (!VALID_STAGES.includes(stage as (typeof VALID_STAGES)[number])) {
     return { ok: false, error: "Estado inválido" };
   }
@@ -34,7 +39,10 @@ export async function updateLeadStage({
     .update({ stage })
     .eq("id", id);
 
-  if (error) return { ok: false, error: error.message };
+  if (error) {
+    console.error("[leads] updateLeadStage:", error.message);
+    return { ok: false, error: "No se pudo actualizar el lead. Intenta de nuevo." };
+  }
 
   await logActivity({
     action: "lead_stage_changed",

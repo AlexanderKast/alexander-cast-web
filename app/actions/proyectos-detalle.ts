@@ -18,7 +18,12 @@ const esquemaLink = z.object({
   proyectoId: z.string().uuid(),
   tipo: z.enum(TIPOS_LINK),
   label: z.string().trim().min(1, "Poné un nombre al link.").max(120),
-  url: z.string().trim().url("La URL no es válida."),
+  url: z
+    .string()
+    .trim()
+    .url("La URL no es válida.")
+    // Blocks javascript:/data: URLs that would run when the link is opened.
+    .refine((u) => /^https?:\/\//i.test(u), "Solo enlaces http(s)"),
 });
 
 export async function crearLink(formData: FormData): Promise<ResultadoAccion> {

@@ -124,3 +124,25 @@ export async function emailLimiter(email: string): Promise<LimitResult> {
     reset: res.reset,
   };
 }
+
+/**
+ * Client IP used as the rate-limit key.
+ *
+ * Order: `x-vercel-forwarded-for` (set by the Vercel edge, not spoofable),
+ * then `x-real-ip`, then the FIRST entry of `x-forwarded-for`.
+ * `cf-connecting-ip` is intentionally ignored: without Cloudflare in front,
+ * the client can set it freely and get a fresh bucket on every request.
+ */
+export function clientIp(
+  headers: Pick<Headers, "get">,
+  fallback = "unknown",
+): string {
+  const first = (value: string | null): string | null =>
+    value?.split(",")[0]?.trim() || null;
+  return (
+    first(headers.get("x-vercel-forwarded-for")) ??
+    first(headers.get("x-real-ip")) ??
+    first(headers.get("x-forwarded-for")) ??
+    fallback
+  );
+}

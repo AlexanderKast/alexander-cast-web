@@ -244,7 +244,7 @@ function CampoArchivo({
           <input
             type="file"
             className="hidden"
-            accept=".png,.jpg,.jpeg,.webp,.svg,.gif,.pdf,.zip,.ai"
+            accept=".png,.jpg,.jpeg,.webp,.gif,.pdf,.zip"
             disabled={subiendo}
             onChange={(e) => void subir(e.target.files?.[0])}
           />
@@ -269,7 +269,7 @@ function CampoArchivo({
       </div>
 
       <p className="text-[12px] text-white/30">
-        Hasta 10 MB · PNG, JPG, WEBP, SVG, PDF, AI o ZIP. También podés pegar un link de Drive.
+        Hasta 10 MB · PNG, JPG, WEBP, GIF, PDF o ZIP. También podés pegar un link de Drive.
       </p>
     </div>
   );

@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { leadMagnetSchema } from "@/lib/validators";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { sendLeadMagnetEmail } from "@/lib/resend";
-import { formLimiter, emailLimiter } from "@/lib/rate-limit";
+import { formLimiter, emailLimiter, clientIp } from "@/lib/rate-limit";
 import { leadMagnets } from "@/content/lead-magnets";
 import { logActivity } from "@/lib/admin/activity-logger";
 
@@ -49,10 +49,7 @@ export async function leadMagnetAction(
 
   const normalizedEmail = email.toLowerCase();
   const hdrs = await headers();
-  const ip =
-    hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    hdrs.get("x-real-ip") ??
-    "unknown";
+  const ip = clientIp(hdrs);
 
   const ipCheck = await formLimiter(`lm:ip:${ip}`);
   if (!ipCheck.success) {

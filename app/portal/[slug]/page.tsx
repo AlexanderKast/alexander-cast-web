@@ -1,7 +1,8 @@
 import { notFound, redirect } from 'next/navigation';
 import { createSupabaseServer } from '@/lib/supabase/server';
 import { createSupabaseServiceRole } from '@/lib/supabase/server';
-import { getClientBySlug, getClientDashboardData } from '@/lib/portal/actions';
+import { getClientDashboardData } from '@/lib/portal/actions';
+import { getClientBySlug } from '@/lib/portal/queries';
 import { ClientDashboard } from '@/components/portal/ClientDashboard';
 
 interface Props {

@@ -872,7 +872,7 @@
 @layer components {
   /* ── Images melt into the background instead of looking pasted on ── */
   .imt-img-fade {
-    mask-image: radial-gradient(ellipse 70% 66% at 50% 50%, #000 52%, transparent 100%);
+    mask-image: radial-gradient(ellipse 62% 60% at 50% 50%, #000 38%, transparent 96%);
   }
   .imt-img-fade-bottom {
     mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
