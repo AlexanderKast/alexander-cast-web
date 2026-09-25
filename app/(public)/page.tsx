@@ -34,7 +34,7 @@ export default function HomePage() {
       <FirstMonth />
       <CircuitDivider />
       <Explore />
-      <FinalCta />
+      <FinalCta next={{ href: "/como-trabajamos", label: "Mira cómo trabajamos" }} />
     </>
   );
 }

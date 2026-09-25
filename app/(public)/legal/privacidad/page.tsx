@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { buildMetadata } from "@/lib/seo";
+import { LegalShell } from "@/components/imt/ui/LegalShell";
 import { site } from "@/content/site";
 
 export const metadata: Metadata = buildMetadata({
@@ -11,7 +12,7 @@ export const metadata: Metadata = buildMetadata({
 
 export default function PrivacidadPage() {
   return (
-    <main className="mx-auto max-w-3xl px-6 py-16 prose prose-invert">
+    <LegalShell current="/legal/privacidad">
       <h1>Politica de Privacidad</h1>
       <p>
         <strong>Ultima actualizacion:</strong>{" "}
@@ -116,6 +117,6 @@ export default function PrivacidadPage() {
         Para cualquier asunto relacionado con privacidad, escribe a{" "}
         <a href={`mailto:${site.contacto.principal}`}>{site.contacto.principal}</a>.
       </p>
-    </main>
+    </LegalShell>
   );
 }

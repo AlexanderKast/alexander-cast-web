@@ -33,13 +33,14 @@ export function StepsZigzag() {
           return (
             <li key={step.title} className="grid items-center gap-10 lg:grid-cols-2 lg:gap-20">
               <figure className={cn("relative", reversed && "lg:order-2")}>
-                <div data-reveal="" data-tilt="" className="imt-reveal-img overflow-hidden rounded-[2rem] border border-imt-border bg-imt-bg">
+                <div data-reveal="" data-tilt="" className="imt-reveal-img relative aspect-[4/3]">
                   <Image
                     src={STEP_IMAGES[step.icon]}
                     alt={step.alt}
                     placeholder="blur"
+                    fill
                     sizes="(min-width: 1024px) 45vw, 100vw"
-                    className="h-auto w-full"
+                    className="imt-img-fade object-cover"
                   />
                 </div>
                 <span

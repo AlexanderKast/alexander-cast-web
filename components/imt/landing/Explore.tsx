@@ -18,8 +18,8 @@ const CARDS = [
     text: "Un sprint semanal que ves funcionando en producción.",
     image: construimosImage,
     alt: "Brazo robótico ensamblando módulos de software conectados",
-    className: "lg:col-span-7 lg:row-span-2",
-    imageClass: "aspect-[4/3] lg:aspect-auto lg:h-[420px]",
+    className: "",
+    imageClass: "aspect-[4/3]",
   },
   {
     href: "/planes",
@@ -28,8 +28,8 @@ const CARDS = [
     text: "Un equipo de desarrollo completo por menos que un empleado.",
     image: operamosImage,
     alt: "Tablero de monitoreo con gráficas en vivo",
-    className: "lg:col-span-5",
-    imageClass: "aspect-[16/9]",
+    className: "",
+    imageClass: "aspect-[4/3]",
   },
   {
     href: "/nosotros",
@@ -38,8 +38,8 @@ const CARDS = [
     text: "Alexander y Samuel Castaño, sin intermediarios.",
     image: estudioImage,
     alt: "Estudio de desarrollo de noche con dos monitores y un tablero de estrategia",
-    className: "lg:col-span-5",
-    imageClass: "aspect-[16/9]",
+    className: "",
+    imageClass: "aspect-[4/3]",
   },
 ];
 
@@ -54,7 +54,7 @@ export function Explore() {
           </h2>
         </header>
 
-        <ul className="mt-12 grid gap-5 lg:grid-cols-12">
+        <ul className="mt-12 grid gap-5 md:grid-cols-3">
           {CARDS.map((card, i) => (
             <li
               key={card.href}
@@ -74,8 +74,8 @@ export function Explore() {
                     alt={card.alt}
                     fill
                     placeholder="blur"
-                    sizes="(min-width: 1024px) 50vw, 100vw"
-                    className="object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:group-hover:scale-100"
+                    sizes="(min-width: 768px) 33vw, 100vw"
+                    className="imt-img-fade-bottom object-cover transition-transform duration-700 group-hover:scale-105 motion-reduce:group-hover:scale-100"
                   />
                 </div>
                 <div className="flex flex-1 items-end justify-between gap-6 p-6 sm:p-8">

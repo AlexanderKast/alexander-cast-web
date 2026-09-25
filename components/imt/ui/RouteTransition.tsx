@@ -23,7 +23,11 @@ export function RouteTransition({ children }: { children: ReactNode }) {
 
   return (
     <>
-      {animate ? <div aria-hidden="true" className="imt-route-curtain" /> : null}
+      {animate ? (
+        <div aria-hidden="true" className="imt-route-curtain">
+          <span className="imt-route-ring" />
+        </div>
+      ) : null}
       <div className={animate ? "imt-route-enter" : undefined}>{children}</div>
     </>
   );

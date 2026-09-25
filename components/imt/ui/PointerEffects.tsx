@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 
 const MAGNET_PX = 8;
-const TILT_DEG = 6;
+const TILT_DEG = 3;
 
 /**
  * Delegated pointer effects for the whole public site (one listener):

@@ -84,7 +84,7 @@ export function Hero() {
           <figure
             data-tilt=""
             data-spotlight=""
-            className="overflow-hidden rounded-[2rem] border border-imt-border bg-imt-bg shadow-[0_40px_120px_-40px_rgba(163,230,53,0.55)] transition-transform duration-300 ease-out"
+            className="relative transition-transform duration-300 ease-out"
           >
             <Image
               src={heroImage}
@@ -92,9 +92,9 @@ export function Hero() {
               placeholder="blur"
               priority
               sizes="(min-width: 1024px) 55vw, 100vw"
-              className="h-auto w-full"
+              className="imt-img-fade h-auto w-full"
             />
-            <figcaption className="flex items-center justify-between border-t border-imt-border px-5 py-3 font-imt-mono text-[11px] uppercase tracking-[0.18em] text-imt-muted">
+            <figcaption className="absolute bottom-3 left-1/2 flex w-[min(80%,22rem)] -translate-x-1/2 items-center justify-between rounded-full border border-imt-border bg-imt-bg/80 px-5 py-2 font-imt-mono text-[11px] uppercase tracking-[0.18em] text-imt-muted backdrop-blur">
               <span>Operar</span>
               <span aria-hidden="true" className="h-px flex-1 mx-4 bg-imt-border-solid" />
               <span className="text-imt-accent">Escalar</span>

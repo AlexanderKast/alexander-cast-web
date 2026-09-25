@@ -32,6 +32,7 @@ type SysNode = {
 };
 
 type Packet = { from: number; to: number; t: number; speed: number };
+type Star = { x: number; y: number; z: number; size: number; phase: number; lime: boolean };
 type Ripple = { x: number; y: number; r: number; life: number };
 
 function easeInOut(t: number) {
@@ -75,6 +76,11 @@ export function SystemsCanvas() {
     let maxPackets = 18;
     let frame = 0;
     let lastHud = -1;
+    let stars: Star[] = [];
+    let lite = false; // phones / touch: fewer elements, 30 fps, 1x resolution
+    let lastDraw = 0;
+    let centerX = 0;
+    let centerY = 0;
     const pointer = { x: -9999, y: -9999, active: false };
 
     // Deterministic pseudo-random so the "chaos" layout is stable across resizes.
@@ -85,19 +91,24 @@ export function SystemsCanvas() {
     };
 
     const build = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
       width = window.innerWidth;
       height = window.innerHeight;
+      lite = width < 768 || window.matchMedia("(pointer: coarse)").matches;
+      const dpr = lite ? 1 : Math.min(window.devicePixelRatio || 1, 1.5);
       canvas.width = Math.round(width * dpr);
       canvas.height = Math.round(height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      spacing = width < 640 ? 64 : width < 1024 ? 80 : 96;
-      maxPackets = width < 640 ? 8 : 18;
-      cols = Math.ceil(width / spacing) + 1;
-      rows = Math.ceil(height / spacing) + 1;
-      const offsetX = (width - (cols - 1) * spacing) / 2;
-      const offsetY = (height - (rows - 1) * spacing) / 2;
+      spacing = lite ? 84 : width < 1024 ? 84 : 96;
+      maxPackets = lite ? 7 : 18;
+      centerX = width / 2;
+      centerY = height / 2;
+      // Cover the screen diagonal so the slow rotation never shows empty corners.
+      const side = Math.hypot(width, height) + spacing * 2;
+      cols = Math.ceil(side / spacing) + 1;
+      rows = cols;
+      const offsetX = centerX - ((cols - 1) * spacing) / 2;
+      const offsetY = centerY - ((rows - 1) * spacing) / 2;
 
       seed = 7;
       nodes = [];
@@ -146,6 +157,17 @@ export function SystemsCanvas() {
         }
       }
       packets = [];
+
+      // Starfield in three depths (drawn behind the circuit).
+      const count = lite ? 70 : 170;
+      stars = Array.from({ length: count }, () => ({
+        x: rand() * width,
+        y: rand() * height,
+        z: 0.25 + rand() * 0.75,
+        size: rand() < 0.12 ? 2 : 1,
+        phase: rand() * Math.PI * 2,
+        lime: rand() < 0.25,
+      }));
     };
 
     const isTrace = (a: number, b: number) => {
@@ -209,6 +231,32 @@ export function SystemsCanvas() {
     const draw = (time: number) => {
       ctx.clearRect(0, 0, width, height);
       const p = easeInOut(progress);
+      const scroll = window.scrollY;
+
+      // Nebula: a single soft glow that drifts as you scroll.
+      const nx = width * (0.5 + 0.32 * Math.sin(scroll * 0.0005));
+      const ny = height * (0.42 + 0.22 * Math.cos(scroll * 0.00037));
+      const nr = Math.max(width, height) * 0.62;
+      const nebula = ctx.createRadialGradient(nx, ny, 0, nx, ny, nr);
+      nebula.addColorStop(0, `rgba(${ACCENT},0.075)`);
+      nebula.addColorStop(1, `rgba(${ACCENT},0)`);
+      ctx.fillStyle = nebula;
+      ctx.fillRect(0, 0, width, height);
+
+      // Stars: parallax with scroll (deeper = slower) and a soft twinkle.
+      for (const st of stars) {
+        let y = (st.y - scroll * st.z * 0.35) % height;
+        if (y < 0) y += height;
+        const tw = 0.35 + 0.65 * Math.abs(Math.sin(time * 0.0008 * speed + st.phase));
+        const a = (0.25 + 0.55 * st.z) * tw;
+        ctx.fillStyle = st.lime ? `rgba(${ACCENT},${a.toFixed(3)})` : `rgba(247,254,231,${(a * 0.8).toFixed(3)})`;
+        ctx.fillRect(st.x, y, st.size, st.size);
+      }
+
+      // The whole circuit turns slowly with the scroll, like a galaxy.
+      const angle = scroll * 0.00016;
+      const cosA = Math.cos(angle);
+      const sinA = Math.sin(angle);
       const drift = 1 - p;
       const radius = width < 640 ? 110 : 170;
 
@@ -216,8 +264,10 @@ export function SystemsCanvas() {
       for (const n of nodes) {
         const wobX = Math.sin(time * 0.0007 * speed + n.phase) * 18 * drift;
         const wobY = Math.cos(time * 0.0006 * speed + n.phase) * 18 * drift;
-        let x = n.cx + wobX + (n.ox - n.cx - wobX) * p;
-        let y = n.cy + wobY + (n.oy - n.cy - wobY) * p;
+        const px = n.cx + wobX + (n.ox - n.cx - wobX) * p - centerX;
+        const py = n.cy + wobY + (n.oy - n.cy - wobY) * p - centerY;
+        let x = centerX + px * cosA - py * sinA;
+        let y = centerY + px * sinA + py * cosA;
         if (pointer.active) {
           const dx = x - pointer.x;
           const dy = y - pointer.y;
@@ -261,7 +311,7 @@ export function SystemsCanvas() {
       }
 
       // Pointer spotlight (one translucent layer on a transparent canvas).
-      if (pointer.active) {
+      if (pointer.active && !lite) {
         const spot = ctx.createRadialGradient(pointer.x, pointer.y, 0, pointer.x, pointer.y, radius * 1.6);
         spot.addColorStop(0, `rgba(${ACCENT},0.16)`);
         spot.addColorStop(1, `rgba(${ACCENT},0)`);
@@ -340,6 +390,11 @@ export function SystemsCanvas() {
     const step = (time: number) => {
       frame = 0;
       if (document.hidden) return;
+      if (lite && time - lastDraw < 33) {
+        frame = requestAnimationFrame(step);
+        return;
+      }
+      lastDraw = time;
       progress += (target - progress) * 0.06;
       scrollBoost *= 0.9;
 

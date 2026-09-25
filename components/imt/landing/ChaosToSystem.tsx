@@ -182,13 +182,13 @@ export function ChaosToSystem() {
   };
 
   return (
-    <section ref={sectionRef} aria-labelledby="caos-title" className="relative h-[260vh]">
-      <div className="sticky top-0 flex h-[100svh] flex-col justify-center overflow-hidden pt-16">
-        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+    <section ref={sectionRef} aria-labelledby="caos-title" className="relative h-[220vh] sm:h-[260vh]">
+      <div className="sticky top-0 flex h-[100svh] flex-col overflow-hidden pb-4 pt-20 sm:pb-6 sm:pt-24">
+        <div className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <Eyebrow>Baja despacio</Eyebrow>
-              <h2 id="caos-title" className="mt-3 max-w-2xl text-balance text-3xl font-bold leading-[1.05] sm:text-5xl">
+              <h2 id="caos-title" className="mt-3 max-w-2xl text-balance text-2xl font-bold leading-[1.05] sm:text-4xl lg:text-5xl">
                 Así pasa tu operación del caos a un sistema.
               </h2>
             </div>
@@ -206,7 +206,8 @@ export function ChaosToSystem() {
             </div>
           </div>
 
-          <div className="relative mt-6 aspect-[3/4] w-full overflow-hidden rounded-[2rem] border border-imt-border bg-imt-bg/70 backdrop-blur-sm sm:mt-8 sm:aspect-[16/9] lg:aspect-[21/9]">
+          {/* The stage takes whatever height is left, so the scene always fits the screen. */}
+          <div className="relative mt-4 min-h-[260px] w-full flex-1 overflow-hidden rounded-[2rem] border border-imt-border bg-imt-bg/70 backdrop-blur-sm sm:mt-6">
             <motion.div aria-hidden="true" className="imt-dots absolute inset-0" style={{ opacity: gridOpacity }} />
 
             <svg aria-hidden="true" viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 size-full">
@@ -242,7 +243,7 @@ export function ChaosToSystem() {
             </p>
           </div>
 
-          <div className="mt-5 flex items-center gap-4">
+          <div className="mt-3 flex items-center gap-4 sm:mt-4">
             <button
               type="button"
               onClick={() => jumpTo(false)}

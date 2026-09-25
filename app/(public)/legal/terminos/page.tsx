@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { buildMetadata } from "@/lib/seo";
+import { LegalShell } from "@/components/imt/ui/LegalShell";
 import { site } from "@/content/site";
 
 export const metadata: Metadata = buildMetadata({
@@ -11,7 +12,7 @@ export const metadata: Metadata = buildMetadata({
 
 export default function TerminosPage() {
   return (
-    <main className="mx-auto max-w-3xl px-6 py-16 prose prose-invert">
+    <LegalShell current="/legal/terminos">
       <h1>Terminos y Condiciones</h1>
       <p>
         <strong>Ultima actualizacion:</strong>{" "}
@@ -109,6 +110,6 @@ export default function TerminosPage() {
         Consultas sobre estos terminos:{" "}
         <a href={`mailto:${site.contacto.principal}`}>{site.contacto.principal}</a>.
       </p>
-    </main>
+    </LegalShell>
   );
 }

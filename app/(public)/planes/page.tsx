@@ -29,7 +29,7 @@ export default function PlanesPage() {
       />
       <Plans />
       <Faq />
-      <FinalCta />
+      <FinalCta next={{ href: "/nosotros", label: "Conoce al equipo" }} />
     </>
   );
 }

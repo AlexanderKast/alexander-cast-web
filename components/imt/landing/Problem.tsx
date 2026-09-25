@@ -10,13 +10,13 @@ export function Problem() {
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_1fr] lg:gap-16">
           <figure className="relative order-2 lg:order-1">
-            <div data-reveal="" data-tilt="" className="imt-reveal-img overflow-hidden rounded-[2rem] border border-imt-border">
+            <div data-reveal="" data-tilt="" className="imt-reveal-img">
               <Image
                 src={problemaImage}
                 alt="Escritorio de noche lleno de hojas de cálculo impresas, notas y celulares con notificaciones"
                 placeholder="blur"
                 sizes="(min-width: 1024px) 50vw, 100vw"
-                className="h-auto w-full"
+                className="imt-img-fade h-auto w-full"
               />
             </div>
             <figcaption className="absolute -bottom-5 left-5 rounded-full border border-imt-border bg-imt-bg px-4 py-2 font-imt-mono text-[11px] uppercase tracking-[0.18em] text-imt-muted sm:left-8">

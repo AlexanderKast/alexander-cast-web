@@ -31,7 +31,7 @@ export default function ComoTrabajamosPage() {
       <StepsZigzag />
       <WeeklyLog />
       <ResultsBento />
-      <FinalCta />
+      <FinalCta next={{ href: "/planes", label: "Ver los planes" }} />
     </>
   );
 }
