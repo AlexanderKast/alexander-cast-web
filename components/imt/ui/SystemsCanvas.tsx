@@ -207,7 +207,10 @@ export function SystemsCanvas() {
     const build = () => {
       width = window.innerWidth;
       height = window.innerHeight;
-      lite = width < 768 || coarse.matches;
+      // Weak hardware (few cores / little memory) also gets the lite mode.
+      const nav = navigator as Navigator & { deviceMemory?: number };
+      const weak = (navigator.hardwareConcurrency || 8) <= 4 || (nav.deviceMemory ?? 8) <= 4;
+      lite = width < 768 || coarse.matches || weak;
       budget = lite ? 33 : 0;
       slowFrames = 0;
       sampledFrames = 0;

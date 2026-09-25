@@ -90,7 +90,7 @@ export function RouteTransition({ children }: { children: ReactNode }) {
       {/* The cover + spinning ring now lives in NavigationLoader (shown while the
           next page loads); this component only fades the new content in. */}
       {SHOW_CURTAIN && overlay ? (curtain?.host ? createPortal(overlay, curtain.host) : overlay) : null}
-      <div className={curtain ? "imt-route-enter" : undefined}>{children}</div>
+      <div>{children}</div>
     </>
   );
 }

@@ -7,9 +7,10 @@ type Phase = "idle" | "covering" | "revealing";
 type Mode = "dash" | "circle";
 
 // Desktop: a lime dash + sliding panel. Phones: the circle wave, tuned light.
+// `reveal` covers the overlay exit plus the staggered page entrance (CSS).
 const TIMING: Record<Mode, { minVisible: number; reveal: number }> = {
-  dash: { minVisible: 380, reveal: 520 },
-  circle: { minVisible: 250, reveal: 380 },
+  dash: { minVisible: 380, reveal: 950 },
+  circle: { minVisible: 250, reveal: 750 },
 };
 const FAILSAFE_MS = 6000; // never leave the screen covered
 
@@ -40,6 +41,15 @@ export function NavigationLoader() {
   const go = (next: Phase) => {
     phaseRef.current = next;
     setPhase(next);
+    // Page content listens to this to hide while covered and enter on reveal.
+    const root = document.documentElement;
+    if (next === "idle") {
+      delete root.dataset.navPhase;
+      delete root.dataset.navMode;
+    } else {
+      root.dataset.navPhase = next;
+      root.dataset.navMode = modeRef.current;
+    }
   };
 
   const reveal = () => {
