@@ -243,3 +243,58 @@ export const FIRST_MONTH = [
 export function diagnosticoHref(planId?: PlanId): string {
   return planId ? `/diagnostico?plan=${planId}` : "/diagnostico";
 }
+
+/** What each step hands over (from what every plan includes). */
+export const STEP_DELIVERABLES: Record<StepIcon, string[]> = {
+  diagnose: ["Mapa de tus procesos", "Cuellos de botella priorizados por impacto", "Roadmap de sprints"],
+  build: ["Una entrega en producción cada semana", "Tablero compartido con el avance", "Canal directo con quien construye"],
+  operate: ["Monitoreo de lo construido", "Soporte y mejoras continuas", "Informe mensual de horas y resultados"],
+};
+
+/** Back side of the result cards: illustrative examples, not client cases. */
+export const RESULT_EXAMPLES: Record<ResultIcon, string> = {
+  hours: "Ejemplo: el cierre de caja que alguien arma a mano cada noche pasa a correr solo.",
+  errors: "Ejemplo: los pedidos de la tienda llegan a facturación sin que nadie los vuelva a digitar.",
+  realtime: "Ejemplo: un tablero con las ventas y el inventario del día, abierto desde el celular.",
+  connected: "Ejemplo: Shopify, Siigo y tu CRM compartiendo los mismos datos de cliente.",
+  scale: "Ejemplo: más pedidos atendidos con el mismo equipo de operaciones.",
+  ownership: "Ejemplo: si mañana cambias de proveedor, el código y los accesos siguen siendo tuyos.",
+};
+
+/** Pool for the interactive sprint log (illustrative tasks only). */
+export const SPRINT_POOL = [
+  "Automatización de cotizaciones",
+  "Dashboard de ventas en tiempo real",
+  "Integración Shopify → Siigo",
+  "Agente de IA para soporte en WhatsApp",
+  "Conciliación de pagos automática",
+  "Alertas de inventario bajo",
+  "Reporte semanal enviado solo",
+  "Formulario de pedidos conectado al CRM",
+] as const;
+
+/** "Dos miradas": how each founder approaches the same problem. */
+export const TWO_VIEWS = [
+  {
+    problem: "Las cotizaciones tardan dos días",
+    negocio: "¿Cuántas cotizaciones se pierden por llegar tarde y quién las arma hoy? Priorizamos por lo que más ventas destraba.",
+    codigo: "Tomamos precios e inventario de donde ya viven, generamos la cotización con una plantilla y la enviamos sola.",
+  },
+  {
+    problem: "Nadie sabe cuánto se vendió hoy",
+    negocio: "Definimos las 5 cifras que el dueño necesita ver cada mañana para decidir, no un reporte de 40 columnas.",
+    codigo: "Conectamos tienda, caja y facturación a un tablero que se actualiza solo y se abre desde el celular.",
+  },
+  {
+    problem: "Todo depende de una persona",
+    negocio: "Documentamos el proceso con quien lo hace hoy y decidimos qué partes debe hacer un sistema.",
+    codigo: "Convertimos esos pasos en una automatización con alertas, para que el proceso corra aunque esa persona falte.",
+  },
+] as const;
+
+/** Back side of the value cards on /nosotros. */
+export const VALUE_EXAMPLES = [
+  "Cada viernes te mostramos algo nuevo funcionando, no un informe de avance.",
+  "El repositorio, las automatizaciones y las cuentas se crean a nombre de tu empresa desde el día uno.",
+  "Si algo depende de un tercero (una API, una plataforma), te lo decimos antes de empezar.",
+] as const;

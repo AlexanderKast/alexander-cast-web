@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { TEAM } from "@/content/imt";
+import { TEAM, VALUE_EXAMPLES } from "@/content/imt";
+import { FlipCard } from "@/components/imt/ui/FlipCard";
+import { TwoViews } from "@/components/imt/landing/TwoViews";
 import { Card } from "@/components/imt/ui/Card";
 import { Eyebrow } from "@/components/imt/ui/Eyebrow";
 import { PageHeader } from "@/components/imt/ui/PageHeader";
@@ -117,6 +119,8 @@ export default function NosotrosPage() {
         </div>
       </section>
 
+      <TwoViews />
+
       <section aria-labelledby="valores-title" className="relative py-16 sm:py-24">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
           <header data-reveal="">
@@ -125,13 +129,23 @@ export default function NosotrosPage() {
               Tres reglas que no negociamos.
             </h2>
           </header>
-          <ol className="mt-12 grid gap-5 md:grid-cols-3">
+          <p data-reveal="" className="mt-4 text-imt-muted">Toca una tarjeta (o pasa el mouse) para ver cómo se ve en la práctica.</p>
+          <ol className="mt-10 grid gap-5 md:grid-cols-3">
             {VALUES.map((value, i) => (
-              <Card key={value.title} as="li" reveal delay={i * 100} className="sm:p-10">
-                <span className="font-imt-display text-6xl font-bold text-imt-accent">0{i + 1}</span>
-                <h3 className="mt-6 text-2xl font-bold">{value.title}</h3>
-                <p className="mt-3 text-pretty leading-relaxed text-imt-muted">{value.text}</p>
-              </Card>
+              <li key={value.title} data-reveal="" style={{ "--reveal-delay": `${i * 100}ms` } as React.CSSProperties}>
+                <FlipCard
+                  label={value.title}
+                  className="h-full"
+                  back={VALUE_EXAMPLES[i]}
+                  front={
+                    <span className="block">
+                      <span className="block font-imt-display text-6xl font-bold text-imt-accent">0{i + 1}</span>
+                      <span className="mt-6 block font-imt-display text-2xl font-bold text-imt-text">{value.title}</span>
+                      <span className="mt-3 block text-pretty leading-relaxed text-imt-muted">{value.text}</span>
+                    </span>
+                  }
+                />
+              </li>
             ))}
           </ol>
         </div>

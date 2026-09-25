@@ -1,119 +1,125 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Play } from "lucide-react";
+import { SPRINT_POOL } from "@/content/imt";
 import { cn } from "@/lib/utils";
 
-/* Illustrative content only: no real clients or projects. */
-const ENTRIES = [
-  { sprint: "04", task: "Diagnóstico de procesos", status: "roadmap aprobado" },
-  { sprint: "05", task: "Automatización de cotizaciones", status: "en producción" },
-  { sprint: "06", task: "Dashboard de ventas en tiempo real", status: "en producción" },
-  { sprint: "07", task: "Integración Shopify → Siigo", status: "en producción" },
-  { sprint: "08", task: "Agente de IA para soporte en WhatsApp", status: "en producción" },
-] as const;
+type Entry = { id: number; sprint: number; task: string; state: "running" | "done" };
 
-const STEP_MS = 1500;
-const HOLD_MS = 3200;
+const VISIBLE = 5;
+const BUILD_MS = 1300;
+const AUTO_MS = 3200;
+
+function initialEntries(): Entry[] {
+  return SPRINT_POOL.slice(0, VISIBLE).map((task, i) => ({ id: i, sprint: 4 + i, task, state: "done" }));
+}
 
 /**
- * Terminal-style sprint log. Rows reveal one by one ("en construcción" →
- * "✓ …"), then the log restarts. All rows are always rendered so the panel
- * never changes height. Static and complete with reduced motion.
+ * Interactive sprint log (illustrative tasks only). Press "Lanzar sprint" to
+ * push the next task: it shows up "en construcción" and moves to
+ * "en producción". It also advances on its own while visible, until the
+ * visitor takes over.
  */
 export function SprintLog() {
   const ref = useRef<HTMLDivElement>(null);
-  const [shown, setShown] = useState<number>(ENTRIES.length);
+  const [entries, setEntries] = useState<Entry[]>(initialEntries);
+  const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+  const nextIndex = useRef(VISIBLE);
+  const userDriven = useRef(false);
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  const launch = () => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
+    const task = SPRINT_POOL[nextIndex.current % SPRINT_POOL.length];
+    nextIndex.current += 1;
+    setEntries((prev) => {
+      const last = prev[prev.length - 1];
+      const entry: Entry = { id: (last?.id ?? 0) + 1, sprint: (last?.sprint ?? 0) + 1, task, state: "running" };
+      return [...prev, entry].slice(-VISIBLE);
+    });
+    timers.current.push(
+      setTimeout(() => {
+        setEntries((prev) => prev.map((e, i) => (i === prev.length - 1 ? { ...e, state: "done" } : e)));
+        busyRef.current = false;
+        setBusy(false);
+      }, BUILD_MS),
+    );
+  };
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-
-    let visible = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    // Starts complete (matches the server HTML) and restarts after a pause.
-    let count: number = ENTRIES.length;
-
-    const tick = () => {
-      if (!visible || document.hidden) return;
-      count = count >= ENTRIES.length ? 0 : count + 1;
-      setShown(count);
-      timer = setTimeout(tick, count >= ENTRIES.length ? HOLD_MS : STEP_MS);
-    };
-
+    let interval: ReturnType<typeof setInterval> | undefined;
     const io = new IntersectionObserver(([entry]) => {
-      const wasVisible = visible;
-      visible = Boolean(entry?.isIntersecting);
-      if (visible && !wasVisible) {
-        clearTimeout(timer);
-        timer = setTimeout(tick, count >= ENTRIES.length ? HOLD_MS : STEP_MS);
+      clearInterval(interval);
+      if (entry?.isIntersecting && !userDriven.current) {
+        interval = setInterval(() => {
+          if (!userDriven.current && !document.hidden) launch();
+        }, AUTO_MS);
       }
     });
     io.observe(el);
-
-    const onVisibility = () => {
-      if (!document.hidden && visible) {
-        clearTimeout(timer);
-        timer = setTimeout(tick, STEP_MS);
-      }
-    };
-    document.addEventListener("visibilitychange", onVisibility);
-
+    const pending = timers.current;
     return () => {
       io.disconnect();
-      clearTimeout(timer);
-      document.removeEventListener("visibilitychange", onVisibility);
+      clearInterval(interval);
+      pending.forEach(clearTimeout);
     };
+    // launch only touches refs and state setters, so it is safe to capture once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
     <div ref={ref} className="imt-card overflow-hidden shadow-[0_30px_90px_-40px_rgba(163,230,53,0.5)]">
-      <div className="flex items-center justify-between border-b border-imt-border px-5 py-3">
+      <div className="flex items-center justify-between gap-3 border-b border-imt-border px-5 py-3">
         <div className="flex items-center gap-2" aria-hidden="true">
           <span className="size-2.5 rounded-full bg-[#3a5a1f]" />
           <span className="size-2.5 rounded-full bg-[#3a5a1f]" />
           <span className="size-2.5 rounded-full bg-imt-accent" />
         </div>
-        <span className="font-imt-mono text-xs text-imt-muted">sprints.log</span>
-        <span className="rounded-full border border-imt-border px-2.5 py-1 font-imt-mono text-[10px] uppercase tracking-[0.14em] text-imt-muted">
-          Ejemplo ilustrativo
-        </span>
+        <span className="font-imt-mono text-xs text-imt-muted">sprints.log · ejemplo ilustrativo</span>
       </div>
 
-      <p className="sr-only">
-        Ejemplo ilustrativo de un registro de sprints: cada semana una entrega pasa a producción.
-      </p>
-
-      <ol className="space-y-1 p-4 font-imt-mono text-[12.5px] leading-relaxed sm:p-5 sm:text-[13px]" aria-hidden="true">
-        {ENTRIES.map((entry, i) => {
-          const state = i < shown - 1 || (shown === ENTRIES.length && i === shown - 1) ? "done" : i === shown - 1 ? "running" : "idle";
-          return (
-            <li
-              key={entry.sprint}
-              className={cn(
-                "grid grid-cols-[auto_1fr] gap-x-3 rounded-lg px-2 py-2 transition-opacity duration-300 sm:grid-cols-[auto_1fr_auto]",
-                state === "idle" ? "opacity-0" : "opacity-100",
-                state === "running" && "bg-imt-elev",
-              )}
-            >
-              <span className="text-imt-muted">Sprint {entry.sprint}</span>
-              <span className="text-imt-text">{entry.task}</span>
-              <span
-                className={cn(
-                  "col-start-2 sm:col-start-auto",
-                  state === "running" ? "text-imt-muted" : "text-imt-accent",
-                )}
-              >
-                {state === "running" ? "▸ en construcción" : `✓ ${entry.status}`}
-              </span>
-            </li>
-          );
-        })}
-        <li className="flex items-center gap-2 px-2 pt-3 text-imt-muted">
-          <span className="text-imt-accent">$</span> próxima entrega: viernes
-          <span className="imt-caret inline-block h-4 w-2 bg-imt-accent" />
-        </li>
+      <ol className="space-y-1 p-4 font-imt-mono text-[12.5px] leading-relaxed sm:p-5 sm:text-[13px]" aria-live="polite">
+        {entries.map((entry) => (
+          <li
+            key={entry.id}
+            className={cn(
+              "grid animate-in grid-cols-[auto_1fr] gap-x-3 rounded-lg px-2 py-2 fade-in slide-in-from-bottom-2 duration-500 sm:grid-cols-[auto_1fr_auto]",
+              entry.state === "running" && "bg-imt-elev",
+            )}
+          >
+            <span className="text-imt-muted">Sprint {String(entry.sprint).padStart(2, "0")}</span>
+            <span className="text-imt-text">{entry.task}</span>
+            <span className={cn("col-start-2 sm:col-start-auto", entry.state === "running" ? "text-imt-muted" : "text-imt-accent")}>
+              {entry.state === "running" ? "▸ en construcción…" : "✓ en producción"}
+            </span>
+          </li>
+        ))}
       </ol>
+
+      <div className="flex items-center justify-between gap-3 border-t border-imt-border px-5 py-3">
+        <span className="flex items-center gap-2 font-imt-mono text-xs text-imt-muted">
+          <span className="text-imt-accent">$</span> próxima entrega: viernes
+          <span className="imt-caret inline-block h-3.5 w-1.5 bg-imt-accent" aria-hidden="true" />
+        </span>
+        <button
+          type="button"
+          onClick={() => {
+            userDriven.current = true;
+            launch();
+          }}
+          disabled={busy}
+          className="inline-flex items-center gap-2 rounded-full bg-imt-accent px-4 py-2 text-sm font-semibold text-imt-bg transition-opacity hover:opacity-90 disabled:opacity-50"
+        >
+          <Play className="size-3.5" aria-hidden />
+          Lanzar sprint
+        </button>
+      </div>
     </div>
   );
 }

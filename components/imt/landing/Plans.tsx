@@ -1,10 +1,7 @@
-import { ArrowRight, Check } from "lucide-react";
-import Link from "next/link";
-import { diagnosticoHref, formatCop, PLAN_CONDITIONS, PLAN_INCLUDES, PLANS } from "@/content/imt";
+import { Check } from "lucide-react";
+import { PLAN_CONDITIONS, PLAN_INCLUDES } from "@/content/imt";
 import { N_CUPOS } from "@/site.config";
-import { cn } from "@/lib/utils";
-import { buttonClasses } from "@/components/imt/ui/Button";
-import { GlowBorder } from "@/components/imt/ui/GlowBorder";
+import { PlansGrid } from "./PlansGrid";
 
 /** Founder-slots band + the three plans + what every plan includes. */
 export function Plans() {
@@ -28,60 +25,7 @@ export function Plans() {
           </p>
         </div>
 
-        <ul className="mt-10 grid gap-5 lg:grid-cols-3 lg:items-stretch">
-          {PLANS.map((plan, i) => (
-            <GlowBorder
-              key={plan.id}
-              as="li"
-              spotlight
-              reveal
-              delay={i * 100}
-              active={plan.featured}
-              className={cn("flex flex-col p-8 sm:p-10", plan.featured && "lg:-my-4 lg:py-14")}
-            >
-              <div id={plan.id} className="flex scroll-mt-28 items-center justify-between gap-3">
-                <h3 className="font-imt-mono text-lg font-medium tracking-[0.22em] text-imt-text">{plan.name}</h3>
-                {plan.featured ? (
-                  <span className="rounded-full bg-imt-accent px-3 py-1 font-imt-mono text-[11px] font-medium uppercase tracking-[0.14em] text-imt-bg">
-                    Más elegido
-                  </span>
-                ) : null}
-              </div>
-
-              <p className="mt-8 text-sm text-imt-muted">desde</p>
-              <p className="flex flex-wrap items-baseline gap-x-2">
-                <span
-                  className={cn(
-                    "font-imt-display text-5xl font-bold tracking-tight",
-                    plan.featured ? "text-imt-accent" : "text-imt-text",
-                  )}
-                >
-                  {formatCop(plan.priceCop)}
-                </span>
-                <span className="text-imt-muted">/mes · COP</span>
-              </p>
-
-              <ul className="mt-8 space-y-3 border-t border-imt-border pt-8">
-                {[plan.hours, plan.projects].map((line) => (
-                  <li key={line} className="flex items-center gap-3 text-lg text-imt-text">
-                    <Check className="size-5 shrink-0 text-imt-accent" aria-hidden />
-                    {line}
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-6 flex-1 text-pretty leading-relaxed text-imt-muted">{plan.description}</p>
-
-              <Link
-                href={diagnosticoHref(plan.id)}
-                className={buttonClasses(plan.featured ? "primary" : "secondary", "lg", "mt-10 w-full")}
-                aria-label={`Agenda tu diagnóstico — plan ${plan.name}`}
-              >
-                Agenda tu diagnóstico
-                <ArrowRight className="size-4" aria-hidden />
-              </Link>
-            </GlowBorder>
-          ))}
-        </ul>
+        <PlansGrid />
 
         <div data-reveal="" className="mt-10 grid gap-8 rounded-[2rem] border border-imt-border bg-imt-surface p-8 sm:p-10 lg:grid-cols-[0.8fr_1.2fr]">
           <div>

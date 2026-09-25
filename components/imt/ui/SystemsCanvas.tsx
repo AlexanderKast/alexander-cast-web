@@ -62,6 +62,10 @@ export function SystemsCanvas() {
     let cols = 0;
     let rows = 0;
     let nodes: SysNode[] = [];
+    // Which grid edges are circuit traces (the rest fade out once ordered).
+    let traceRight = new Uint8Array(0);
+    let traceDown = new Uint8Array(0);
+    let degree = new Uint8Array(0);
     let packets: Packet[] = [];
     let ripples: Ripple[] = [];
     let progress = animate ? 0 : 0.85;
@@ -115,7 +119,41 @@ export function SystemsCanvas() {
           });
         }
       }
+      // Traces: biased random runs so they read as circuit tracks, not a grid.
+      traceRight = new Uint8Array(nodes.length);
+      traceDown = new Uint8Array(nodes.length);
+      degree = new Uint8Array(nodes.length);
+      for (let i = 0; i < nodes.length; i++) {
+        const c = i % cols;
+        const r = Math.floor(i / cols);
+        if (c < cols - 1) {
+          const run = c > 0 && traceRight[i - 1] === 1;
+          traceRight[i] = rand() < (run ? 0.64 : 0.26) ? 1 : 0;
+        }
+        if (r < rows - 1) {
+          const run = r > 0 && traceDown[i - cols] === 1;
+          traceDown[i] = rand() < (run ? 0.55 : 0.2) ? 1 : 0;
+        }
+      }
+      for (let i = 0; i < nodes.length; i++) {
+        if (traceRight[i]) {
+          degree[i]++;
+          degree[i + 1]++;
+        }
+        if (traceDown[i]) {
+          degree[i]++;
+          degree[i + cols]++;
+        }
+      }
       packets = [];
+    };
+
+    const isTrace = (a: number, b: number) => {
+      if (b === a + 1) return traceRight[a] === 1;
+      if (b === a - 1) return traceRight[b] === 1;
+      if (b === a + cols) return traceDown[a] === 1;
+      if (b === a - cols) return traceDown[b] === 1;
+      return false;
     };
 
     const neighbors = (i: number) => {
@@ -129,9 +167,19 @@ export function SystemsCanvas() {
       return list;
     };
 
+    const traceNeighbors = (i: number) => {
+      const all = neighbors(i);
+      if (progress < 0.5) return all;
+      const traces = all.filter((n) => isTrace(i, n));
+      return traces.length ? traces : all;
+    };
+
     const spawnPacket = (from?: number) => {
-      const start = from ?? Math.floor(Math.random() * nodes.length);
-      const options = neighbors(start);
+      let start = from ?? Math.floor(Math.random() * nodes.length);
+      if (from === undefined && progress >= 0.5) {
+        for (let k = 0; k < 12 && degree[start] === 0; k++) start = Math.floor(Math.random() * nodes.length);
+      }
+      const options = traceNeighbors(start);
       const to = options[Math.floor(Math.random() * options.length)];
       if (to === undefined) return;
       packets.push({ from: start, to, t: 0, speed: 0.012 + Math.random() * 0.018 });
@@ -196,9 +244,13 @@ export function SystemsCanvas() {
           if (j < 0) continue;
           const b = nodes[j];
           const dist = Math.hypot(a.x - b.x, a.y - b.y);
-          // Chaos: only short, tangled links survive. Order: the clean grid.
+          // Chaos: short tangled links. Order: circuit traces with a light wave.
           const tidy = Math.min(1, Math.max(0, (2.6 * spacing - dist) / (1.6 * spacing)));
-          const alpha = (0.1 + 0.22 * p) * tidy + 0.6 * Math.max(a.glow, b.glow);
+          const trace = isTrace(i, j);
+          const wave = Math.pow(0.5 + 0.5 * Math.sin((a.ox + a.oy) * 0.0045 - time * 0.0012 * speed), 3);
+          const ordered = trace ? 0.26 + 0.34 * wave : 0.02;
+          const alpha = 0.12 * (1 - p) * tidy + ordered * p + 0.6 * Math.max(a.glow, b.glow);
+          ctx.lineWidth = trace && p > 0.5 ? 1.4 : 1;
           if (alpha < 0.015) continue;
           ctx.strokeStyle = `rgba(${ACCENT},${alpha.toFixed(3)})`;
           ctx.beginPath();
@@ -230,13 +282,23 @@ export function SystemsCanvas() {
         }
       }
 
-      // Nodes.
-      for (const n of nodes) {
-        const alpha = Math.min(1, 0.45 + 0.3 * p + n.glow);
+      // Nodes: loose dots in chaos, solder pads on the traces once ordered.
+      ctx.lineWidth = 1;
+      for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
+        const pad = degree[i] > 0;
+        const wave = Math.pow(0.5 + 0.5 * Math.sin((n.ox + n.oy) * 0.0045 - time * 0.0012 * speed), 3);
+        const alpha = Math.min(1, 0.45 * (1 - p) + (pad ? 0.55 + 0.4 * wave : 0.06) * p + n.glow);
         ctx.fillStyle = `rgba(${ACCENT},${alpha.toFixed(3)})`;
         ctx.beginPath();
         ctx.arc(n.x, n.y, 2 + n.glow * 3.5, 0, Math.PI * 2);
         ctx.fill();
+        if (pad && p > 0.4 && degree[i] !== 2) {
+          ctx.strokeStyle = `rgba(${ACCENT},${(alpha * 0.7 * p).toFixed(3)})`;
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, 5.5, 0, Math.PI * 2);
+          ctx.stroke();
+        }
       }
 
       // Packets travelling along the circuit.
@@ -289,7 +351,7 @@ export function SystemsCanvas() {
         if (pk.t < 1) return true;
         // Arrived: continue to a random next neighbour (no immediate U-turn).
         if (packets.length > wanted + 6) return false;
-        const next = neighbors(pk.to).filter((n) => n !== pk.from);
+        const next = traceNeighbors(pk.to).filter((n) => n !== pk.from);
         const to = next[Math.floor(Math.random() * next.length)];
         if (to === undefined) return false;
         pk.from = pk.to;
@@ -389,7 +451,7 @@ export function SystemsCanvas() {
 
   return (
     <>
-      <canvas ref={canvasRef} aria-hidden="true" className="pointer-events-none fixed inset-0 z-0 size-full" />
+      <canvas ref={canvasRef} aria-hidden="true" className="pointer-events-none fixed inset-0 z-0 size-full [mask-image:radial-gradient(ellipse_90%_85%_at_50%_45%,#000_45%,transparent_100%)]" />
       {isStaticRoute ? null : (
         <div
           aria-hidden="true"

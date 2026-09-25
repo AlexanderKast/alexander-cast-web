@@ -1,22 +1,7 @@
 import { TOOLS } from "@/content/imt";
+import { DraggableMarquee } from "@/components/imt/ui/DraggableMarquee";
 
-function Track({ hidden }: { hidden?: boolean }) {
-  return (
-    <ul className="imt-marquee-track gap-3 pr-3" aria-hidden={hidden ? "true" : undefined}>
-      {TOOLS.map((tool) => (
-        <li
-          key={tool}
-          className="flex shrink-0 items-center gap-2.5 rounded-full border border-imt-border bg-imt-surface px-5 py-2.5 font-imt-display text-base font-medium text-imt-text"
-        >
-          <span aria-hidden="true" className="size-2 rounded-full bg-imt-accent shadow-[0_0_12px_rgba(163,230,53,0.8)]" />
-          {tool}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-/** "We connect what you already use": infinite chip marquee. */
+/** "We connect what you already use": a chip marquee you can grab and fling. */
 export function ToolsStrip() {
   return (
     <section aria-labelledby="herramientas-title" className="relative py-12 sm:py-16">
@@ -29,10 +14,20 @@ export function ToolsStrip() {
           Conectamos las herramientas que ya usas
         </h2>
       </div>
-      <div data-reveal="" className="imt-marquee mt-8">
-        <Track />
-        <Track hidden />
+      <div data-reveal="" className="mt-8">
+        <DraggableMarquee label="Herramientas que conectamos">
+          {TOOLS.map((tool) => (
+            <span
+              key={tool}
+              className="mr-3 flex shrink-0 items-center gap-2.5 rounded-full border border-imt-border bg-imt-surface px-6 py-3 font-imt-display text-lg font-medium text-imt-text transition-colors hover:border-imt-accent"
+            >
+              <span aria-hidden="true" className="size-2 rounded-full bg-imt-accent shadow-[0_0_12px_rgba(163,230,53,0.8)]" />
+              {tool}
+            </span>
+          ))}
+        </DraggableMarquee>
       </div>
+      <p className="mt-4 text-center text-xs text-imt-muted">Arrástralo y suéltalo con fuerza.</p>
     </section>
   );
 }

@@ -1,8 +1,9 @@
 import Image from "next/image";
-import { RESULTS, STEPS } from "@/content/imt";
+import { RESULT_EXAMPLES, RESULTS, STEP_DELIVERABLES, STEPS } from "@/content/imt";
 import { cn } from "@/lib/utils";
 import { Eyebrow } from "@/components/imt/ui/Eyebrow";
-import { GlowBorder } from "@/components/imt/ui/GlowBorder";
+import { FlipCard } from "@/components/imt/ui/FlipCard";
+import { StepDetails } from "./StepDetails";
 import { PauseWhenHidden } from "./PauseWhenHidden";
 import { RESULT_ICONS, STEP_ICONS } from "./icons";
 import { SprintLog } from "./SprintLog";
@@ -55,6 +56,7 @@ export function StepsZigzag() {
                 </span>
                 <h3 className="mt-6 text-4xl font-bold sm:text-5xl">{step.title}</h3>
                 <p className="mt-5 max-w-lg text-pretty text-lg leading-relaxed text-imt-muted sm:text-xl">{step.text}</p>
+                <StepDetails items={STEP_DELIVERABLES[step.icon]} />
               </div>
             </li>
           );
@@ -106,38 +108,41 @@ export function ResultsBento() {
           <h2 id="resultados-title" className="mt-4 max-w-3xl text-balance text-4xl font-bold leading-[1.05] sm:text-5xl">
             Sistemas que trabajan mientras tú vendes.
           </h2>
+          <p className="mt-4 text-imt-muted">Toca una tarjeta (o pasa el mouse) para ver un ejemplo.</p>
         </header>
         <ul className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
           {RESULTS.map((result, i) => {
             const Icon = RESULT_ICONS[result.icon];
             const featured = result.icon === "ownership";
             return (
-              <GlowBorder
+              <li
                 key={result.title}
-                spotlight
-                as="li"
-                reveal
-                delay={i * 70}
-                active={featured}
-                className={cn(
-                  "flex gap-5 p-7 sm:p-8",
-                  featured ? "flex-col sm:flex-row sm:items-center" : "flex-col",
-                  BENTO_SPANS[i],
-                )}
+                data-reveal=""
+                style={{ "--reveal-delay": `${i * 70}ms` } as React.CSSProperties}
+                className={BENTO_SPANS[i]}
               >
-                <span
-                  className={cn(
-                    "inline-flex size-12 shrink-0 items-center justify-center rounded-2xl border",
-                    featured ? "border-imt-accent bg-imt-accent text-imt-bg" : "border-imt-border bg-imt-bg text-imt-accent",
-                  )}
-                >
-                  <Icon className="size-5" strokeWidth={1.6} aria-hidden />
-                </span>
-                <div>
-                  <h3 className="text-xl font-bold">{result.title}</h3>
-                  <p className="mt-2 text-pretty leading-relaxed text-imt-muted">{result.text}</p>
-                </div>
-              </GlowBorder>
+                <FlipCard
+                  label={result.title}
+                  featured={featured}
+                  back={RESULT_EXAMPLES[result.icon]}
+                  front={
+                    <span className={cn("flex gap-5", featured ? "flex-col sm:flex-row sm:items-center" : "flex-col")}>
+                      <span
+                        className={cn(
+                          "inline-flex size-12 shrink-0 items-center justify-center rounded-2xl border",
+                          featured ? "border-imt-accent bg-imt-accent text-imt-bg" : "border-imt-border bg-imt-bg text-imt-accent",
+                        )}
+                      >
+                        <Icon className="size-5" strokeWidth={1.6} aria-hidden />
+                      </span>
+                      <span>
+                        <span className="block font-imt-display text-xl font-bold text-imt-text">{result.title}</span>
+                        <span className="mt-2 block text-pretty leading-relaxed text-imt-muted">{result.text}</span>
+                      </span>
+                    </span>
+                  }
+                />
+              </li>
             );
           })}
         </ul>
