@@ -41,15 +41,21 @@ export const fichaSchema = z.object({
 });
 export type FichaInput = z.infer<typeof fichaSchema>;
 
-/** Compra pública: WhatsApp obligatorio (se usa para acompañar y recuperar compras a medias). */
-export const compraSchema = z.object({
+/** Paso 1 de la compra: datos de contacto y consentimiento (Ley 1581). WhatsApp obligatorio: se usa para acompañar y recuperar compras a medias. */
+export const leadSchema = z.object({
   nombre: texto(2, 120),
   email: correoSchema,
   whatsapp: z
     .string()
     .trim()
     .regex(/^\+?[\d\s-]{7,20}$/, "WhatsApp no válido"),
-  nivel: z.enum(["preventa", "regular", "vip"]),
   acepto: z.literal("on", { error: "Debes aceptar el tratamiento de datos para continuar." }),
+});
+export type LeadInput = z.infer<typeof leadSchema>;
+
+/** Paso 2: el pedido que se guardó en el paso 1 y la entrada elegida. */
+export const compraSchema = z.object({
+  pedido: z.uuid("Pedido no válido"),
+  nivel: z.enum(["preventa", "regular", "vip"]),
 });
 export type CompraInput = z.infer<typeof compraSchema>;

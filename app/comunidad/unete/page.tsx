@@ -13,7 +13,8 @@ import {
   nivelesDisponibles,
   preventaVigente,
 } from "@/lib/comunidad/oferta";
-import { cuposRestantes } from "@/lib/comunidad/pedidos";
+import { cuposRestantes, obtenerPedido } from "@/lib/comunidad/pedidos";
+import { pedidoIdValido } from "@/lib/comunidad/pagos";
 import { NOMBRE_PRODUCTO, formatoPesos } from "@/lib/comunidad/precio";
 
 /** Página de venta: sí se puede indexar y compartir. */
@@ -36,9 +37,9 @@ const PREGUNTAS = [
 export default async function UnetePage({
   searchParams,
 }: {
-  searchParams: Promise<{ cancelado?: string; o?: string; n?: string }>;
+  searchParams: Promise<{ cancelado?: string; o?: string; n?: string; p?: string }>;
 }) {
-  const { cancelado, o, n } = await searchParams;
+  const { cancelado, o, n, p } = await searchParams;
   const disponibles = nivelesDisponibles();
   const cupos = await cuposRestantes().catch(() => null);
   const agotado = cupos !== null && cupos.total <= 0;
@@ -52,6 +53,13 @@ export default async function UnetePage({
       nota: NIVELES[id].nota,
       extras: NIVELES[id].extras,
     }));
+  // Si vuelve desde Stripe sin pagar, retoma en el paso 2 con sus datos guardados.
+  const idRetomar = pedidoIdValido(p);
+  const retomado = idRetomar ? await obtenerPedido(idRetomar).catch(() => null) : null;
+  const pedidoInicial =
+    retomado && ["pendiente", "abandonado", "fallido"].includes(retomado.estado)
+      ? { id: retomado.id, nombre: retomado.nombre }
+      : null;
   const inicial = opciones.find((x) => x.id === n)?.id ?? opciones[0]?.id;
   const abierto = opciones.length > 0 && !agotado && inicial !== undefined;
 
@@ -74,7 +82,7 @@ export default async function UnetePage({
 
       {cancelado ? (
         <p role="status" className="mia-alert">
-          No se completó el pago. Tus datos están guardados: puedes intentarlo de nuevo cuando quieras.
+          No se completó el pago. Tus datos están guardados: elige tu entrada abajo y vuelve a intentarlo cuando quieras.
         </p>
       ) : null}
 
@@ -127,7 +135,12 @@ export default async function UnetePage({
             <p className="mia-eyebrow">Reserva tu lugar</p>
             {abierto ? (
               <div className="mt-5">
-                <FormCompra niveles={opciones} nivelInicial={inicial} origen={o === "stand" ? "stand" : "web"} />
+                <FormCompra
+                  niveles={opciones}
+                  nivelInicial={inicial}
+                  origen={o === "stand" ? "stand" : "web"}
+                  pedidoInicial={pedidoInicial}
+                />
               </div>
             ) : (
               <div className="mt-4 space-y-3">

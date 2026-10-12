@@ -104,6 +104,65 @@ export async function crearPedido(input: {
   return aPedido(data as unknown as Record<string, unknown>);
 }
 
+/**
+ * Paso 1 del formulario: guarda (o reutiliza) el lead. Si la misma persona ya
+ * empezó en las últimas 24 h sin pagar, se actualiza ese pedido en vez de
+ * crear otro: la lista de leads no se llena de duplicados.
+ */
+export async function guardarLead(input: {
+  nombre: string;
+  email: string;
+  whatsapp?: string;
+  origen: "web" | "stand";
+  nivel: Nivel;
+  ip: string;
+}): Promise<Pedido> {
+  const desde = new Date(Date.now() - 24 * 3600_000).toISOString();
+  const { data: previo } = await db()
+    .from("mia_pedidos")
+    .select("id")
+    .eq("email", input.email)
+    .in("estado", ["pendiente", "abandonado", "fallido"])
+    .gte("created_at", desde)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (previo) {
+    const { data } = await db()
+      .from("mia_pedidos")
+      .update({
+        nombre: input.nombre,
+        whatsapp: input.whatsapp ?? null,
+        estado: "pendiente",
+        privacidad_aceptada_en: new Date().toISOString(),
+        privacidad_ip: input.ip,
+      })
+      .eq("id", previo.id as string)
+      .select(COLS)
+      .single();
+    if (data) return aPedido(data as unknown as Record<string, unknown>);
+  }
+  return crearPedido(input);
+}
+
+/** Paso 2: fija el nivel elegido (y con él el monto) mientras el pedido siga sin pagar. */
+export async function cambiarNivel(pedidoId: string, nivel: Nivel): Promise<Pedido | null> {
+  const { data } = await db()
+    .from("mia_pedidos")
+    .update({
+      nivel,
+      monto_centavos: montoCentavos(nivel),
+      bonus_incluido: incluyeSesionArranque(nivel),
+      estado: "pendiente",
+    })
+    .eq("id", pedidoId)
+    .in("estado", ["pendiente", "abandonado", "fallido"])
+    .select(COLS)
+    .maybeSingle();
+  return data ? aPedido(data as unknown as Record<string, unknown>) : null;
+}
+
 export async function obtenerPedido(id: string): Promise<Pedido | null> {
   const { data } = await db().from("mia_pedidos").select(COLS).eq("id", id).maybeSingle();
   return data ? aPedido(data as unknown as Record<string, unknown>) : null;
@@ -132,18 +191,30 @@ export function idsRecuperables(pedidos: Pedido[], ahora: number = Date.now()): 
  * confirmados que aún no tienen cuenta y checkouts abiertos (30 min de
  * reserva), para no vender el mismo cupo a dos personas a la vez.
  */
-export async function cuposRestantes(): Promise<{ total: number; vip: number }> {
+export async function cuposRestantes(excluirPedidoId?: string): Promise<{ total: number; vip: number }> {
   const admin = db();
   const reservaDesde = new Date(Date.now() - 35 * 60_000).toISOString();
   const n = (r: { count: number | null }) => r.count ?? 0;
+  // Solo reservan cupo los checkouts ABIERTOS (ya tienen enlace de pago) y recientes;
+  // un lead del paso 1 todavía no reserva nada. El pedido que consulta no se cuenta contra sí mismo.
+  const reservas = () => {
+    let q = admin
+      .from("mia_pedidos")
+      .select("id", { count: "exact", head: true })
+      .eq("estado", "pendiente")
+      .not("checkout_url", "is", null)
+      .gte("updated_at", reservaDesde);
+    if (excluirPedidoId) q = q.neq("id", excluirPedidoId);
+    return q;
+  };
 
   const [insc, inscVip, pag, pagVip, pend, pendVip] = await Promise.all([
     admin.from("mia_inscripciones").select("id", { count: "exact", head: true }),
     admin.from("mia_inscripciones").select("id", { count: "exact", head: true }).eq("entrada", "vip"),
     admin.from("mia_pedidos").select("id", { count: "exact", head: true }).eq("estado", "pagado").is("aprovisionado_en", null),
     admin.from("mia_pedidos").select("id", { count: "exact", head: true }).eq("estado", "pagado").is("aprovisionado_en", null).eq("nivel", "vip"),
-    admin.from("mia_pedidos").select("id", { count: "exact", head: true }).eq("estado", "pendiente").gte("created_at", reservaDesde),
-    admin.from("mia_pedidos").select("id", { count: "exact", head: true }).eq("estado", "pendiente").gte("created_at", reservaDesde).eq("nivel", "vip"),
+    reservas(),
+    reservas().eq("nivel", "vip"),
   ]);
 
   return {
@@ -170,6 +241,10 @@ export async function crearCheckout(pedido: Pedido): Promise<string> {
   const base = baseUrl();
 
   if (stripeConfigurado()) {
+    // Si había un checkout abierto (cambió de nivel), se cierra: no pueden quedar dos enlaces de pago vivos.
+    if (pedido.stripeSessionId) {
+      await getStripe().checkout.sessions.expire(pedido.stripeSessionId).catch(() => undefined);
+    }
     const session = await getStripe().checkout.sessions.create(
       {
         mode: "payment",
@@ -188,12 +263,12 @@ export async function crearCheckout(pedido: Pedido): Promise<string> {
         metadata: { pedido_id: pedido.id },
         payment_intent_data: { metadata: { pedido_id: pedido.id }, description: NOMBRE_PRODUCTO },
         success_url: `${base}/comunidad/gracias?p=${pedido.id}`,
-        cancel_url: `${base}/comunidad/unete?cancelado=1`,
+        // Vuelve al paso 2 con los datos guardados.
+        cancel_url: `${base}/comunidad/unete?cancelado=1&p=${pedido.id}`,
         locale: "es",
         // Mínimo permitido por Stripe: 30 min. Pasado ese tiempo llega checkout.session.expired.
         expires_at: Math.floor(Date.now() / 1000) + 31 * 60,
       },
-      { idempotencyKey: `mia-pedido-${pedido.id}` },
     );
     if (!session.url) throw new ConfigPagoError("Stripe no devolvió el enlace de pago.");
     await db()
@@ -291,12 +366,19 @@ export async function procesarPago(pago: PagoNormalizado): Promise<ResultadoPago
 }
 
 /** Marca un pedido que NO está pagado. Un pago confirmado nunca retrocede por esto. */
-export async function marcarNoPagado(pedidoId: string, estado: "fallido" | "abandonado"): Promise<void> {
-  await db()
+export async function marcarNoPagado(
+  pedidoId: string,
+  estado: "fallido" | "abandonado",
+  sessionId?: string,
+): Promise<void> {
+  let q = db()
     .from("mia_pedidos")
     .update({ estado })
     .eq("id", pedidoId)
     .in("estado", ["pendiente", "fallido", "abandonado"]);
+  // Una sesión vieja que se cerró al cambiar de nivel no debe marcar como abandonado el pedido vigente.
+  if (sessionId) q = q.eq("stripe_session_id", sessionId);
+  await q;
 }
 
 /* ============================================================
@@ -413,7 +495,7 @@ export async function procesarEventoStripe(event: Stripe.Event): Promise<string>
       case "checkout.session.expired": {
         const s = event.data.object as Stripe.Checkout.Session;
         const id = pedidoIdValido(s.metadata?.pedido_id ?? s.client_reference_id);
-        if (id) await marcarNoPagado(id, event.type.endsWith("expired") ? "abandonado" : "fallido");
+        if (id) await marcarNoPagado(id, event.type.endsWith("expired") ? "abandonado" : "fallido", s.id);
         r = { resultado: id ? "no_pagado" : "sin_pedido", pedidoId: id };
         break;
       }

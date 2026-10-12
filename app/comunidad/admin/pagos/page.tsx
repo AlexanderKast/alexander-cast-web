@@ -91,7 +91,7 @@ export default async function PagosPage() {
                   </td>
                   <td>
                     <span className={"mia-chip " + (p.estado === "pagado" ? "mia-chip-ok" : "")}>
-                      {ETIQUETA[p.estado]}
+                      {p.estado === "pendiente" && !p.checkoutUrl ? "Lead · paso 1" : ETIQUETA[p.estado]}
                     </span>
                     {p.motivoRevision ? <p className="mia-muted mt-1 text-xs">{p.motivoRevision}</p> : null}
                     {p.errorAprovisionamiento ? (
