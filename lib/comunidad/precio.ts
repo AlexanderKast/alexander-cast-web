@@ -12,3 +12,14 @@ export function formatoPesos(centavos: number): string {
   const pesos = Math.round(centavos / 100);
   return `$${String(pesos).replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
 }
+
+/** Importe legible según la moneda: pesos como «$790.000»; cualquier otra como «USD 297.00». */
+export function formatoMoneda(centavos: number, moneda: string): string {
+  if (moneda.toLowerCase() === "cop") return formatoPesos(centavos);
+  return `${moneda.toUpperCase()} ${(centavos / 100).toFixed(2)}`;
+}
+
+/** Fecha y hora en la zona de Colombia, p. ej. «domingo, 18 de octubre de 2026». */
+export function fechaCorta(iso: string): string {
+  return new Date(iso).toLocaleDateString("es-CO", { timeZone: "America/Bogota", day: "numeric", month: "long" });
+}

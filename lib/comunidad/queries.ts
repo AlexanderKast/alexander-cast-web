@@ -1,5 +1,4 @@
 import { createSupabaseServiceRole } from "@/lib/supabase/server";
-import type { Entrada } from "./validators";
 
 /** Lecturas del panel de admin. Usan service role: llamarlas solo tras requireAdminComunidad(). */
 
@@ -23,6 +22,36 @@ export async function listarCohortes(): Promise<Cohorte[]> {
   }));
 }
 
+/** Ofertas a las que un admin puede dar de alta a alguien (con el nombre del programa y la cohorte). */
+export interface OfertaAlta {
+  id: string;
+  productoId: string;
+  productoNombre: string;
+  slug: string;
+  nombre: string;
+  cohorteNombre: string | null;
+}
+
+export async function listarOfertasParaAlta(): Promise<OfertaAlta[]> {
+  const { data } = await createSupabaseServiceRole()
+    .from("mia_ofertas")
+    .select("id, producto_id, slug, nombre, producto:mia_productos(nombre, estado), cohorte:mia_cohortes(nombre)")
+    .eq("activa", true)
+    .order("orden", { ascending: true });
+  const uno = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? (v[0] ?? null) : (v ?? null));
+  return ((data ?? []) as unknown as Record<string, unknown>[])
+    .map((o) => ({ o, p: uno(o.producto as { nombre: string; estado: string } | null), c: uno(o.cohorte as { nombre: string } | null) }))
+    .filter(({ p }) => p?.estado === "publicado")
+    .map(({ o, p, c }) => ({
+      id: o.id as string,
+      productoId: o.producto_id as string,
+      productoNombre: p?.nombre ?? "Programa",
+      slug: o.slug as string,
+      nombre: o.nombre as string,
+      cohorteNombre: c?.nombre ?? null,
+    }));
+}
+
 export interface FilaAlumno {
   userId: string;
   nombre: string;
@@ -30,8 +59,8 @@ export interface FilaAlumno {
   whatsapp: string | null;
   rol: string;
   privacidad: boolean;
-  entrada: Entrada | null;
-  cohorte: string | null;
+  /** Programas con derecho (puede ser más de uno) y cómo lo obtuvo. */
+  programas: { producto: string; oferta: string; estado: string; origen: string }[];
   fichaCompleta: boolean;
   fichaVende: string | null;
   fichaAQuien: string | null;
@@ -39,9 +68,11 @@ export interface FilaAlumno {
   creadoEn: string;
 }
 
-interface InscRaw {
-  entrada: Entrada;
-  cohorte: { nombre: string } | { nombre: string }[] | null;
+interface DerechoRaw {
+  entrada: string;
+  estado: string;
+  origen: string;
+  producto: { nombre: string } | { nombre: string }[] | null;
   ficha: { vende: string; a_quien: string; quiere: string }[] | { vende: string; a_quien: string; quiere: string } | null;
 }
 
@@ -50,19 +81,17 @@ export async function listarAlumnos(): Promise<FilaAlumno[]> {
     .from("mia_perfiles")
     .select(
       "user_id, nombre, email, whatsapp, rol, privacidad_aceptada_en, created_at, " +
-        "inscripciones:mia_inscripciones(entrada, cohorte:mia_cohortes(nombre), ficha:mia_fichas(vende, a_quien, quiere))",
+        "derechos:mia_inscripciones(entrada, estado, origen, producto:mia_productos(nombre), ficha:mia_fichas(vende, a_quien, quiere))",
     )
     .order("created_at", { ascending: false })
     .limit(2000);
   if (error) throw new Error(`No se pudo leer el listado: ${error.message}`);
 
-  const uno = <T,>(v: T | T[] | null | undefined): T | null =>
-    Array.isArray(v) ? (v[0] ?? null) : (v ?? null);
+  const uno = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? (v[0] ?? null) : (v ?? null));
 
   return ((data ?? []) as unknown as Record<string, unknown>[]).map((p) => {
-    const insc = uno(p.inscripciones as InscRaw[] | null);
-    const ficha = insc ? uno(insc.ficha) : null;
-    const cohorte = insc ? uno(insc.cohorte) : null;
+    const derechos = (p.derechos as DerechoRaw[] | null) ?? [];
+    const ficha = derechos.map((d) => uno(d.ficha)).find((f) => f !== null) ?? null;
     return {
       userId: p.user_id as string,
       nombre: p.nombre as string,
@@ -70,8 +99,12 @@ export async function listarAlumnos(): Promise<FilaAlumno[]> {
       whatsapp: (p.whatsapp as string | null) ?? null,
       rol: p.rol as string,
       privacidad: p.privacidad_aceptada_en !== null,
-      entrada: insc?.entrada ?? null,
-      cohorte: cohorte?.nombre ?? null,
+      programas: derechos.map((d) => ({
+        producto: uno(d.producto)?.nombre ?? "Programa",
+        oferta: d.entrada,
+        estado: d.estado,
+        origen: d.origen,
+      })),
       fichaCompleta: ficha !== null,
       fichaVende: ficha?.vende ?? null,
       fichaAQuien: ficha?.a_quien ?? null,

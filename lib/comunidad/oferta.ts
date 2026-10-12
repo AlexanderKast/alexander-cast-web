@@ -1,62 +1,16 @@
 /**
- * La oferta de Master IA 360 en un solo lugar (fuente: master-ia-360/00-contexto-y-estado-actual.md,
- * decisiones vigentes del 11 de oct de 2026; el precio Regular se actualizó a $1.290.000 el 12 de oct por indicación de Alexander). Cambiar precios, fechas, cupos o textos aquí cambia la
- * página de compra, el cobro y la zona privada, sin tocar componentes. El cliente NUNCA manda el
- * monto: siempre sale de esta tabla.
+ * Contenido editorial de Master IA 360 (texto de la landing y de su ficha).
+ *
+ * IMPORTANTE: aquí NO viven precios, fechas de venta, cupos ni derechos. Eso sale de la base
+ * (mia_productos / mia_ofertas), que es lo que también usa el cobro: así la página y el cobro no pueden
+ * discrepar. Este archivo solo guarda lo que no depende de la oferta vigente.
+ *
+ * Fuente: master-ia-360/00-contexto-y-estado-actual.md.
  */
-import { pesosACentavos } from "./precio";
 
-export type Nivel = "preventa" | "regular" | "vip";
-export const NIVELES_IDS: Nivel[] = ["preventa", "regular", "vip"];
+export const PRODUCTO_PRINCIPAL = "master-ia-360";
 
-/** Cupos: 200 en total, el VIP con tope de 10. */
-export const CUPOS_TOTAL = 200;
-export const CUPOS_VIP = 10;
-
-/** Todas las fechas en hora de Colombia (UTC-5). */
-export const FIN_PREVENTA = new Date("2026-10-18T23:59:59-05:00"); // domingo 18, a medianoche
-export const CIERRE_INSCRIPCIONES = new Date("2026-10-21T20:00:00-05:00"); // miércoles 21, 8 p. m.
-
-export interface DefNivel {
-  id: Nivel;
-  nombre: string;
-  pesos: number;
-  /** Texto corto bajo el precio. */
-  nota: string;
-  /** Lo exclusivo de este nivel (lo común a todos va en INCLUYE_TODOS). */
-  extras: string[];
-}
-
-export const NIVELES: Record<Nivel, DefNivel> = {
-  preventa: {
-    id: "preventa",
-    nombre: "Preventa · precio de feria",
-    pesos: 790_000,
-    nota: "Hasta el domingo 18 de octubre a medianoche. Ahorras $500.000 frente al precio regular.",
-    extras: ["Sesión grupal de arranque antes del 22 de octubre"],
-  },
-  regular: {
-    id: "regular",
-    nombre: "Regular",
-    pesos: 1_290_000,
-    nota: "Desde el 19 de octubre. Inscripciones hasta el miércoles 21, 8 p. m.",
-    extras: [],
-  },
-  vip: {
-    id: "vip",
-    nombre: "VIP",
-    pesos: 1_500_000,
-    nota: `Para salir con tu negocio armado. Solo ${CUPOS_VIP} cupos.`,
-    extras: [
-      "Sesión grupal de arranque antes del 22 de octubre",
-      "Sesión privada 1:1 de 45 min: la arquitectura de tu negocio",
-      "Revisión personal de tu proyecto final",
-      "30 días de seguimiento directo por WhatsApp",
-    ],
-  },
-};
-
-/** Lo que incluyen los tres niveles. */
+/** Lo que incluyen todas las entradas. */
 export const INCLUYE_TODOS = [
   "8 clases en vivo de 2,5 h, con grabación en la plataforma",
   "Plantillas, prompts y recursos de cada clase",
@@ -67,7 +21,7 @@ export const INCLUYE_TODOS = [
 
 /**
  * Lo que se promete llevarse (lo que ENTREGA Alexander: guía, plantilla, clase), no lo que depende de
- * que cada alumno haga la tarea. Fuente: master-ia-360/00-contexto-y-estado-actual.md.
+ * que cada alumno haga la tarea.
  */
 export const LO_QUE_TE_LLEVAS = [
   "La guía y la plantilla para publicar tu landing",
@@ -77,49 +31,41 @@ export const LO_QUE_TE_LLEVAS = [
   "La plantilla de tu plan de 90 días",
 ];
 
+export const RESULTADOS = [
+  ["Una web", "Construyes y publicas tu landing con las plantillas y la guía del programa."],
+  ["Una app", "Diseñas el prototipo de tu app y aprendes a conectarle datos."],
+  ["Una herramienta", "Armas una herramienta interna simple y tu primera tarea automatizada."],
+] as const;
+
 /** Se dice en la página de venta, no el día 1. */
 export const AVISO_CLAUDE = "Necesitas un plan de pago de Claude activo durante el programa. Ese costo no está incluido.";
 
-export const montoCentavos = (n: Nivel): number => pesosACentavos(NIVELES[n].pesos);
-
-export const esNivel = (v: unknown): v is Nivel => typeof v === "string" && (NIVELES_IDS as string[]).includes(v);
-
-export function inscripcionesAbiertas(ahora: Date = new Date()): boolean {
-  return ahora.getTime() <= CIERRE_INSCRIPCIONES.getTime();
-}
-
-/** Hasta el 18: Preventa y VIP. Del 19 al 21: Regular y VIP. Después: cerrado. */
-export function nivelesDisponibles(ahora: Date = new Date()): Nivel[] {
-  if (!inscripcionesAbiertas(ahora)) return [];
-  return [ahora.getTime() <= FIN_PREVENTA.getTime() ? "preventa" : "regular", "vip"];
-}
-
-export function preventaVigente(ahora: Date = new Date()): boolean {
-  return ahora.getTime() <= FIN_PREVENTA.getTime();
-}
+/** Nombres legibles de los derechos que una oferta puede otorgar. */
+export const ETIQUETA_DERECHO: Record<string, string> = {
+  sesion_arranque: "Sesión grupal de arranque",
+  sesion_1a1: "Sesión privada 1:1 de 45 min",
+  revision_proyecto: "Revisión personal de tu proyecto final",
+  seguimiento_30d: "30 días de seguimiento directo por WhatsApp",
+};
 
 /**
- * La «clase privada» de la oferta: la sesión grupal de arranque. La reciben
- * quienes entran con Preventa (hasta el 18) y con VIP; el Regular no.
+ * La sesión grupal de arranque: la reciben las ofertas que otorgan el derecho `sesion_arranque`.
+ * La sesión 1:1 es exclusiva de quien tenga el derecho `sesion_1a1`.
  */
-export const incluyeSesionArranque = (n: Nivel): boolean => n === "preventa" || n === "vip";
-
 export const SESION_ARRANQUE = {
   titulo: "Sesión grupal de arranque",
   resumen:
-    "Una sesión privada antes de la clase 1 para dejar tu cuenta y tu negocio listos, resolver dudas y arrancar el 22 de octubre con ventaja.",
+    "Una sesión antes de la clase 1 para dejar tu cuenta y tu negocio listos, resolver dudas y arrancar el 22 de octubre con ventaja.",
   /** PENDIENTE (Alexander): fecha entre el 19 y el 21 de octubre. ISO con -05:00. null = «se avisará». */
   fecha: null as string | null,
   /** Enlace a la sesión o a la grabación. */
   enlace: process.env.COMUNIDAD_BONO_URL ?? null,
 };
 
-/** «18 de octubre» en español, en hora de Colombia sin depender del locale del servidor. */
-export function fechaLimiteLegible(): string {
-  const meses = [
-    "enero", "febrero", "marzo", "abril", "mayo", "junio",
-    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
-  ];
-  const col = new Date(FIN_PREVENTA.getTime() - 5 * 3600_000);
-  return `${col.getUTCDate()} de ${meses[col.getUTCMonth()]}`;
-}
+export const FAQ_MASTER = [
+  ["¿Cuándo empiezan las clases?", "El jueves 22 de octubre. Son 8 clases de 2,5 horas, 2 por semana, 100% virtuales."],
+  ["¿Cómo accedo a los contenidos?", "Creas tu cuenta gratis, eliges tu entrada dentro de la plataforma y, cuando se confirma tu pago, el programa aparece en «Mis programas»."],
+  ["¿Crear la cuenta me compromete a algo?", "No. Crear una cuenta es gratis y no es una compra ni reserva un cupo."],
+  ["¿Qué pasa si no termino el pago?", "Puedes retomar la compra mientras haya cupos y la oferta siga vigente."],
+  ["¿Qué necesito aparte?", AVISO_CLAUDE],
+] as const;

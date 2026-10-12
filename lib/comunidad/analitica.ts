@@ -10,6 +10,7 @@ import "server-only";
 export type EventoServidor =
   | "registration_verified"
   | "login_success"
+  | "advisor_requested"
   | "checkout_started"
   | "purchase_confirmed";
 

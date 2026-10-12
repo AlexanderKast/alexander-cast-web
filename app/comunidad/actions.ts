@@ -9,15 +9,17 @@ import { clientIp, emailLimiter, formLimiter } from "@/lib/rate-limit";
 import { isSameOriginStrict } from "@/lib/same-origin";
 import {
   requireAdminComunidad,
-  requireMiembro,
-  requireMiembroConPrivacidad,
+  requireDerecho,
+  requireMiembroSinPrivacidad,
 } from "@/lib/comunidad/auth";
-import { altaAlumno } from "@/lib/comunidad/altas";
+import { PRODUCTO_PRINCIPAL } from "@/lib/comunidad/oferta";
+import { altaManual } from "@/lib/comunidad/altas";
+import { ofertaPorSlug } from "@/lib/comunidad/catalogo";
 import { enviarAcceso, enviarAccesosEnLote, enviarVerificacionRegistro } from "@/lib/comunidad/correo";
-import { rutaInternaPermitida } from "@/lib/comunidad/acceso";
+import { rutaInternaPermitida, slugValido } from "@/lib/comunidad/acceso";
+import { sanearUtm } from "@/lib/comunidad/consentimiento";
 import { guardarRegistroPendiente } from "@/lib/comunidad/registro";
 import { parseAlumnosCsv } from "@/lib/comunidad/csv";
-import { listarCohortes } from "@/lib/comunidad/queries";
 import { alumnoSchema, correoSchema, fichaSchema, registroSchema } from "@/lib/comunidad/validators";
 
 export type EstadoForm =
@@ -134,6 +136,43 @@ export async function solicitarRegistro(_p: EstadoForm, fd: FormData): Promise<E
   }
   const d = parsed.data;
 
+  // Intención (programa de interés, asesor, origen, UTM): solo datos de navegación y contacto. Nunca autoridad de
+  // precio ni de acceso; el programa y la oferta se vuelven a validar contra el catálogo al usarlos.
+  const programa = fd.get("programa");
+  const oferta = fd.get("oferta");
+  const pideAsesor = fd.get("asesor") === "1";
+  const canalCrudo = fd.get("canal");
+  const canal: "whatsapp" | "correo" | null = canalCrudo === "whatsapp" || canalCrudo === "correo" ? canalCrudo : null;
+  if (pideAsesor) {
+    if (!slugValido(programa)) return { status: "error", message: "Elige un programa para que un asesor te contacte." };
+    if (!canal) {
+      return { status: "error", message: "Elige cómo quieres que te contacten.", fieldErrors: { canal: "Elige un canal." } };
+    }
+    if (fd.get("consentimiento_contacto") !== "on") {
+      return {
+        status: "error",
+        message: "Revisa los datos.",
+        fieldErrors: { consentimiento_contacto: "Marca la casilla para autorizar que te contactemos." },
+      };
+    }
+    if (canal === "whatsapp" && !d.whatsapp) {
+      return { status: "error", message: "Revisa los datos.", fieldErrors: { whatsapp: "Para contactarte por WhatsApp necesitamos tu número." } };
+    }
+  }
+  const intencion = {
+    productoSlug: slugValido(programa) ? programa : null,
+    ofertaSlug: slugValido(oferta) ? oferta : null,
+    asesor: pideAsesor,
+    canal: pideAsesor ? canal : null,
+    contactoAutorizadoEn: pideAsesor ? new Date().toISOString() : null,
+    origen: fd.get("o") === "stand" ? ("stand" as const) : ("web" as const),
+    utm: {
+      utm_source: sanearUtm(fd.get("utm_source")),
+      utm_medium: sanearUtm(fd.get("utm_medium")),
+      utm_campaign: sanearUtm(fd.get("utm_campaign")),
+    },
+  };
+
   const porIp = await formLimiter(`mia:reg:ip:${clientIp(hdrs)}`);
   const porCorreo = await emailLimiter(`mia:reg:em:${d.email}`);
   if (!porIp.success || !porCorreo.success) {
@@ -150,6 +189,7 @@ export async function solicitarRegistro(_p: EstadoForm, fd: FormData): Promise<E
         nombre: d.nombre,
         whatsapp: d.whatsapp,
         marketing: d.marketing === "on",
+        intencion,
       });
       const r = await enviarVerificacionRegistro(d.email, d.nombre, registroId);
       if (!r.ok) console.error("[comunidad] fallo enviando la verificación de registro:", r.error);
@@ -166,7 +206,7 @@ export async function solicitarRegistro(_p: EstadoForm, fd: FormData): Promise<E
    ============================================================ */
 
 export async function aceptarPrivacidad(): Promise<void> {
-  const m = await requireMiembro();
+  const m = await requireMiembroSinPrivacidad();
   const { error } = await createSupabaseServiceRole()
     .from("mia_perfiles")
     .update({ privacidad_aceptada_en: new Date().toISOString() })
@@ -176,8 +216,8 @@ export async function aceptarPrivacidad(): Promise<void> {
 }
 
 export async function guardarFicha(_p: EstadoForm, fd: FormData): Promise<EstadoForm> {
-  const m = await requireMiembroConPrivacidad();
-  if (!m.inscripcion) return { status: "error", message: "No tienes una inscripción activa." };
+  // La ficha es contenido de Master IA 360: exige el derecho vigente sobre ESE programa (y la RLS lo repite).
+  const { derecho } = await requireDerecho(PRODUCTO_PRINCIPAL);
 
   const parsed = fichaSchema.safeParse({
     vende: fd.get("vende"),
@@ -196,7 +236,7 @@ export async function guardarFicha(_p: EstadoForm, fd: FormData): Promise<Estado
   const supabase = await createSupabaseServer();
   const { error } = await supabase
     .from("mia_fichas")
-    .upsert({ inscripcion_id: m.inscripcion.id, ...parsed.data }, { onConflict: "inscripcion_id" });
+    .upsert({ inscripcion_id: derecho.id, ...parsed.data }, { onConflict: "inscripcion_id" });
 
   if (error) {
     return {
@@ -214,14 +254,15 @@ export async function guardarFicha(_p: EstadoForm, fd: FormData): Promise<Estado
    ============================================================ */
 
 export async function crearAlumno(_p: EstadoForm, fd: FormData): Promise<EstadoForm> {
-  await requireAdminComunidad();
+  const admin = await requireAdminComunidad();
 
   const parsed = alumnoSchema.safeParse({
     nombre: fd.get("nombre"),
     email: fd.get("email"),
     whatsapp: fd.get("whatsapp") ?? "",
-    entrada: fd.get("entrada"),
-    cohorte_id: fd.get("cohorte_id"),
+    oferta_id: fd.get("oferta_id"),
+    motivo: fd.get("motivo"),
+    tipo: fd.get("tipo") === "cortesia" ? "cortesia" : "admin",
   });
   if (!parsed.success) {
     return {
@@ -233,13 +274,15 @@ export async function crearAlumno(_p: EstadoForm, fd: FormData): Promise<EstadoF
   const d = parsed.data;
 
   try {
-    await altaAlumno({
+    // Concesión manual: queda con autor y motivo, y NO cuenta como una venta.
+    await altaManual({
       nombre: d.nombre,
       email: d.email,
       whatsapp: d.whatsapp,
-      entrada: d.entrada,
-      cohorteId: d.cohorte_id,
-      actualizarPerfil: true, // alta hecha por un admin: tiene autoridad sobre los datos
+      ofertaId: d.oferta_id,
+      adminId: admin.userId,
+      motivo: d.motivo,
+      tipo: d.tipo,
     });
   } catch (e) {
     return { status: "error", message: e instanceof Error ? e.message : "No se pudo dar de alta." };
@@ -247,21 +290,21 @@ export async function crearAlumno(_p: EstadoForm, fd: FormData): Promise<EstadoF
 
   revalidatePath("/comunidad/admin");
   if (fd.get("enviar") === "on") {
-    const r = await enviarAcceso(d.email, d.nombre);
+    const r = await enviarAcceso(d.email, d.nombre, { next: "/comunidad/mis-programas" });
     return r.ok
-      ? { status: "ok", message: `${d.nombre} quedó inscrito y el acceso va en camino a ${d.email}.` }
+      ? { status: "ok", message: `${d.nombre} quedó con acceso y el enlace va en camino a ${d.email}.` }
       : {
           status: "ok",
-          message: `${d.nombre} quedó inscrito, pero el correo no salió (${r.error}). Reenvíalo desde la lista.`,
+          message: `${d.nombre} quedó con acceso, pero el correo no salió (${r.error}). Reenvíalo desde la lista.`,
         };
   }
-  return { status: "ok", message: `${d.nombre} quedó inscrito.` };
+  return { status: "ok", message: `${d.nombre} quedó con acceso.` };
 }
 
 const MAX_BYTES_CSV = 1_000_000;
 
 export async function importarAlumnos(_p: EstadoForm, fd: FormData): Promise<EstadoForm> {
-  await requireAdminComunidad();
+  const admin = await requireAdminComunidad();
 
   const archivo = fd.get("archivo");
   if (!(archivo instanceof File) || archivo.size === 0) {
@@ -270,6 +313,8 @@ export async function importarAlumnos(_p: EstadoForm, fd: FormData): Promise<Est
   if (archivo.size > MAX_BYTES_CSV) {
     return { status: "error", message: "El archivo es muy grande (máximo 1 MB)." };
   }
+  const productoId = fd.get("producto_id");
+  if (typeof productoId !== "string" || !productoId) return { status: "error", message: "Elige el programa." };
 
   const { filas, errores } = parseAlumnosCsv(await archivo.text());
   if (filas.length === 0) {
@@ -280,28 +325,27 @@ export async function importarAlumnos(_p: EstadoForm, fd: FormData): Promise<Est
     };
   }
 
-  const cohortes = await listarCohortes();
-  const porNombre = new Map(cohortes.map((c) => [c.nombre.trim().toLowerCase(), c.id]));
-  const porDefecto = fd.get("cohorte_id");
-  const cohorteDefecto = typeof porDefecto === "string" && porDefecto ? porDefecto : cohortes[0]?.id;
-
+  const motivo = `Importación CSV ${new Date().toISOString().slice(0, 10)} por ${admin.email}`;
   const problemas = errores.map((e) => `Línea ${e.linea}: ${e.mensaje}`);
+  const ofertas = new Map<string, string | null>(); // slug → id de oferta (una consulta por entrada distinta)
   let creados = 0;
 
   for (const f of filas) {
-    const cohorteId = f.cohorte ? porNombre.get(f.cohorte.toLowerCase()) : cohorteDefecto;
-    if (!cohorteId) {
-      problemas.push(`Línea ${f.linea}: cohorte "${f.cohorte}" no existe.`);
+    if (!ofertas.has(f.entrada)) ofertas.set(f.entrada, (await ofertaPorSlug(productoId, f.entrada))?.id ?? null);
+    const ofertaId = ofertas.get(f.entrada);
+    if (!ofertaId) {
+      problemas.push(`Línea ${f.linea}: la entrada "${f.entrada}" no existe en ese programa.`);
       continue;
     }
     try {
-      await altaAlumno({
+      await altaManual({
         nombre: f.nombre,
         email: f.email,
         whatsapp: f.whatsapp || undefined,
-        entrada: f.entrada,
-        cohorteId,
-        actualizarPerfil: true, // importación de un admin
+        ofertaId,
+        adminId: admin.userId,
+        motivo,
+        tipo: "admin",
       });
       creados++;
     } catch (e) {

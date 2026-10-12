@@ -6,13 +6,14 @@ import { isSameOriginStrict } from "@/lib/same-origin";
 import { informacionSchema } from "@/lib/comunidad/validators";
 import { UTM_CAMPOS } from "@/lib/comunidad/consentimiento";
 import { guardarSolicitud, type Intencion } from "@/lib/comunidad/leads";
-import { nivelesDisponibles } from "@/lib/comunidad/oferta";
-import { cuposRestantes } from "@/lib/comunidad/pedidos";
+import { obtenerProductoPublicado, ventaAbierta } from "@/lib/comunidad/catalogo";
+import { PRODUCTO_PRINCIPAL } from "@/lib/comunidad/oferta";
 
 /**
- * Solicitar información / lista de espera.
- * Crea ÚNICAMENTE un lead. Nunca: cuenta, sesión, pedido, checkout ni reserva de cupo.
- * Éxito solo si la solicitud quedó persistida. No revela si un correo ya existe.
+ * LISTA DE ESPERA (ventas cerradas o cupos agotados). Es la única captación sin cuenta que queda: con ventas
+ * abiertas el camino es crear cuenta (o pedir un asesor desde la cuenta). Crea ÚNICAMENTE un lead: nunca
+ * cuenta, sesión, pedido, checkout ni reserva de cupo. Éxito solo si la solicitud quedó persistida, y no
+ * revela si un correo ya existe.
  */
 
 export type EstadoInformacion =
@@ -50,13 +51,14 @@ export async function solicitarInformacion(_p: EstadoInformacion, fd: FormData):
     return { status: "error", message: "Muchos intentos seguidos. Prueba en unos minutos." };
   }
 
-  // La intención la decide el servidor: con inscripciones cerradas o cupos agotados es lista de espera.
+  // La intención la decide el servidor: con ventas cerradas o sin cupos es lista de espera; si el catálogo no
+  // responde, se registra como información (nunca se promete una reserva).
   let intencion: Intencion = "informacion";
-  if (nivelesDisponibles().length === 0) {
-    intencion = "lista_espera";
-  } else {
-    const cupos = await cuposRestantes().catch(() => null); // si falla, sigue siendo información
-    if (cupos && cupos.total <= 0) intencion = "lista_espera";
+  try {
+    const producto = await obtenerProductoPublicado(PRODUCTO_PRINCIPAL);
+    if (producto && !(await ventaAbierta(producto.id)).abierta) intencion = "lista_espera";
+  } catch {
+    /* sigue como información */
   }
 
   const utm: Record<string, unknown> = {};

@@ -41,9 +41,20 @@ export default async function ComunidadLayout({ children }: { children: ReactNod
           <nav aria-label="Principal" className="flex items-center gap-1">
             {miembro ? (
               <>
+                <Link href="/comunidad/programas" className={enlaceNav + " hidden sm:inline-flex"}>
+                  Programas
+                </Link>
+                <Link href="/comunidad/mis-programas" className={enlaceNav + " hidden sm:inline-flex"}>
+                  Mis programas
+                </Link>
                 <Link href="/comunidad/mi-cuenta" className={enlaceNav}>
                   Mi cuenta
                 </Link>
+                {miembro.rol === "comercial" || miembro.rol === "admin" ? (
+                  <Link href="/comunidad/comercial" className={enlaceNav + " hidden md:inline-flex"}>
+                    Comercial
+                  </Link>
+                ) : null}
                 {miembro.rol === "admin" ? (
                   <Link href="/comunidad/admin" className={botonSecundarioCls}>
                     Admin

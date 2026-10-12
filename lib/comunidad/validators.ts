@@ -1,13 +1,7 @@
 import { z } from "zod";
 
-export const ENTRADAS = ["regular", "preventa", "vip"] as const;
-export type Entrada = (typeof ENTRADAS)[number];
-
-export const ENTRADA_LABEL: Record<Entrada, string> = {
-  regular: "Regular",
-  preventa: "Preventa",
-  vip: "VIP",
-};
+/** Slug de una oferta (preventa, regular, vip, o las de futuros programas). Se valida contra la base al usarlo. */
+export type Entrada = string;
 
 const texto = (min: number, max: number) => z.string().trim().min(min).max(max);
 
@@ -25,12 +19,17 @@ export const whatsappSchema = z
   .optional()
   .or(z.literal("").transform(() => undefined));
 
+/**
+ * Alta manual de un admin: concede un derecho (NO es una venta). Exige oferta, motivo/referencia y deja
+ * constancia de quién la hizo (concedido_por). «cortesia» la distingue de una alta por pago externo.
+ */
 export const alumnoSchema = z.object({
   nombre: texto(2, 120),
   email: correoSchema,
   whatsapp: whatsappSchema,
-  entrada: z.enum(ENTRADAS),
-  cohorte_id: z.uuid("Cohorte no válida"),
+  oferta_id: z.uuid("Oferta no válida"),
+  motivo: texto(3, 300),
+  tipo: z.enum(["admin", "cortesia"]),
 });
 export type AlumnoInput = z.infer<typeof alumnoSchema>;
 

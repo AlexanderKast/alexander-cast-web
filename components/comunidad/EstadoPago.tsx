@@ -7,8 +7,8 @@ import { botonCls } from "./ui";
 type Estado = "pendiente" | "pagado" | "fallido" | "abandonado" | "reembolsado" | "disputa" | "revision" | "desconocido";
 
 /**
- * Pantalla de «gracias». NO marca nada como pagado: solo consulta el estado
- * que fijó el webhook de Stripe y lo refresca cada pocos segundos.
+ * Pantalla de «gracias». NO marca nada como pagado ni dispara conversiones: solo consulta el estado que fijó el
+ * webhook de Stripe (verificado en el servidor) y lo refresca cada pocos segundos.
  */
 export function EstadoPago({ pedidoId }: { pedidoId: string }) {
   const [estado, setEstado] = useState<Estado>("pendiente");
@@ -34,13 +34,10 @@ export function EstadoPago({ pedidoId }: { pedidoId: string }) {
   if (listo) {
     return (
       <div className="space-y-4">
-        <h1 className="mia-title">¡Estás dentro!</h1>
-        <p className="mia-lead">
-          Recibimos tu pago y creamos tu cuenta. Te enviamos el acceso a tu correo: toca el botón del mensaje
-          (revisa también el spam).
-        </p>
-        <Link href="/comunidad/login" className={botonCls}>
-          Ir a entrar
+        <h1 className="mia-title">¡Listo, ya tienes tu programa!</h1>
+        <p className="mia-lead">Confirmamos tu pago. Lo encuentras en «Mis programas».</p>
+        <Link href="/comunidad/mis-programas" className={botonCls}>
+          Ir a Mis programas
         </Link>
       </div>
     );
@@ -51,8 +48,8 @@ export function EstadoPago({ pedidoId }: { pedidoId: string }) {
       <div className="space-y-4">
         <h1 className="mia-title">El pago no se completó</h1>
         <p className="mia-lead">No te cobramos nada. Puedes intentarlo de nuevo cuando quieras.</p>
-        <Link href="/comunidad/unete" className={botonCls}>
-          Volver a intentar
+        <Link href={`/comunidad/pedidos/${pedidoId}`} className={botonCls}>
+          Volver a mi pedido
         </Link>
       </div>
     );
@@ -62,7 +59,7 @@ export function EstadoPago({ pedidoId }: { pedidoId: string }) {
     return (
       <div className="space-y-4">
         <h1 className="mia-title">Estamos revisando tu pago</h1>
-        <p className="mia-lead">Te escribiremos por WhatsApp o correo en cuanto lo confirmemos.</p>
+        <p className="mia-lead">Te escribiremos en cuanto lo confirmemos. Hasta entonces el programa no se activa.</p>
       </div>
     );
   }
@@ -72,7 +69,7 @@ export function EstadoPago({ pedidoId }: { pedidoId: string }) {
       <h1 className="mia-title">Confirmando tu pago…</h1>
       <p className="mia-lead">
         Esto toma unos segundos. No cierres esta pantalla.
-        {intentos >= 40 ? " Está tardando más de lo normal: tranquilo, si pagaste recibirás tu acceso por correo." : ""}
+        {intentos >= 40 ? " Está tardando más de lo normal: si pagaste, el programa aparecerá en «Mis programas» cuando se confirme." : ""}
       </p>
       <div aria-hidden="true" className="h-1.5 w-48 overflow-hidden rounded-full bg-[var(--mia-surface)]">
         <div className="h-full w-1/3 animate-pulse rounded-full bg-[var(--mia-accent)]" />

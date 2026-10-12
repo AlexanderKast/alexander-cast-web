@@ -26,7 +26,7 @@ describe("parseAlumnosCsv", () => {
   });
   it("reporta entrada inválida, correo malo y repetido", () => {
     const csv =
-      "nombre,correo,entrada\nA B,malo,regular\nC D,c@x.co,gold\nE F,e@x.co,regular\nG H,e@x.co,vip\n";
+      "nombre,correo,entrada\nA B,malo,regular\nC D,c@x.co,vip!!\nE F,e@x.co,regular\nG H,e@x.co,vip\n";
     const { filas, errores } = parseAlumnosCsv(csv);
     expect(filas).toHaveLength(1);
     expect(errores.map((e) => e.linea)).toEqual([2, 3, 5]);

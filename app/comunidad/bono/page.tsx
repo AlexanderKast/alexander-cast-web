@@ -1,26 +1,22 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { requireMiembroConPrivacidad } from "@/lib/comunidad/auth";
-import { SESION_ARRANQUE } from "@/lib/comunidad/oferta";
+import { requireDerecho } from "@/lib/comunidad/auth";
+import { PRODUCTO_PRINCIPAL, SESION_ARRANQUE } from "@/lib/comunidad/oferta";
 import { botonCls } from "@/components/comunidad/ui";
 
 function fechaLegible(iso: string): string {
-  return new Date(iso).toLocaleString("es-CO", {
-    timeZone: "America/Bogota",
-    dateStyle: "full",
-    timeStyle: "short",
-  });
+  return new Date(iso).toLocaleString("es-CO", { timeZone: "America/Bogota", dateStyle: "full", timeStyle: "short" });
 }
 
-/** Sesión grupal de arranque: la reciben quienes entraron con Preventa o VIP. */
+/** Sesión grupal de arranque: la reciben las entradas que otorgan ese derecho en Master IA 360. */
 export default async function SesionArranquePage() {
-  const m = await requireMiembroConPrivacidad();
-  if (!m.inscripcion?.bonusClasePrivada) redirect("/comunidad");
+  const { derecho } = await requireDerecho(PRODUCTO_PRINCIPAL);
+  if (!derecho.derechos.includes("sesion_arranque")) redirect(`/comunidad/programas/${PRODUCTO_PRINCIPAL}`);
 
   return (
     <div className="mx-auto max-w-2xl">
-      <Link href="/comunidad" className="mia-back">
-        ← Volver
+      <Link href={`/comunidad/programas/${PRODUCTO_PRINCIPAL}`} className="mia-back">
+        ← Volver al programa
       </Link>
       <section className="mia-card-dark mt-6">
         <p className="mia-eyebrow">Incluida en tu entrada · antes de la clase 1</p>

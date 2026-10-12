@@ -1,4 +1,3 @@
-import { ENTRADAS, type Entrada } from "./validators";
 
 /** Quita tildes y pasa a minúsculas para comparar encabezados y valores. */
 function normalizar(valor: string): string {
@@ -85,8 +84,9 @@ export interface FilaAlumnoCsv {
   nombre: string;
   email: string;
   whatsapp: string;
-  entrada: Entrada;
-  cohorte: string; // nombre de la cohorte; vacío = la cohorte por defecto
+  /** Slug de la oferta (p. ej. preventa, regular, vip); se resuelve contra el programa elegido. */
+  entrada: string;
+  cohorte: string; // ignorada: la cohorte la define la oferta
 }
 export interface ErrorCsv {
   linea: number;
@@ -150,7 +150,7 @@ export function parseAlumnosCsv(texto: string): {
     const linea = i + 2;
     const nombre = valor(f, "nombre");
     const email = valor(f, "email").toLowerCase();
-    const entrada = normalizar(valor(f, "entrada")) as Entrada;
+    const entrada = normalizar(valor(f, "entrada")).replace(/\s+/g, "-");
 
     if (nombre.length < 2) {
       errores.push({ linea, mensaje: "Nombre vacío o muy corto." });
@@ -160,8 +160,8 @@ export function parseAlumnosCsv(texto: string): {
       errores.push({ linea, mensaje: `Correo no válido: "${email}".` });
       return;
     }
-    if (!ENTRADAS.includes(entrada)) {
-      errores.push({ linea, mensaje: "Entrada debe ser Regular, Preventa o VIP." });
+    if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(entrada)) {
+      errores.push({ linea, mensaje: "Falta la entrada (por ejemplo: preventa, regular o vip)." });
       return;
     }
     if (vistos.has(email)) {

@@ -143,7 +143,8 @@ export async function enviarVerificacionRegistro(
   registroId: string,
 ): Promise<ResultadoEnvio> {
   try {
-    const enlace = await generarEnlaceAcceso(email, { registroId, next: "/comunidad/mi-cuenta" });
+    // Sin `next`: al verificar, el servidor decide el destino según la intención guardada con el registro.
+    const enlace = await generarEnlaceAcceso(email, { registroId });
     if (!enlace) return { ok: false, error: "No se pudo generar el enlace." };
     const { subject, html, text } = cuerpoCorreo(nombre, enlace, "registro");
     const { error } = await resend().emails.send({ from: remitente(), to: email, subject, html, text });

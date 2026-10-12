@@ -1,85 +1,75 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FormCompra, type OpcionNivel } from "@/components/comunidad/FormCompra";
-import { FormInformacion } from "@/components/comunidad/FormInformacion";
-import { Countdown } from "@/components/comunidad/Countdown";
-import { EnlaceCompra, VistaLanding } from "@/components/comunidad/EventosLanding";
-import { botonCls, botonSecundarioCls } from "@/components/comunidad/ui";
+import { getMiembro } from "@/lib/comunidad/auth";
+import { obtenerProductoPublicado, ventaAbierta } from "@/lib/comunidad/catalogo";
+import { ventanaDeOferta, type OfertaVista } from "@/lib/comunidad/ofertas";
 import {
   AVISO_CLAUDE,
-  FIN_PREVENTA,
+  ETIQUETA_DERECHO,
+  FAQ_MASTER,
   INCLUYE_TODOS,
   LO_QUE_TE_LLEVAS,
-  NIVELES,
+  PRODUCTO_PRINCIPAL,
+  RESULTADOS,
   SESION_ARRANQUE,
-  fechaLimiteLegible,
-  montoCentavos,
-  nivelesDisponibles,
-  preventaVigente,
-  type Nivel,
 } from "@/lib/comunidad/oferta";
-import { cuposRestantes, obtenerPedido } from "@/lib/comunidad/pedidos";
-import { pedidoDelNavegador } from "@/lib/comunidad/sesion-pedido";
 import { sanearUtm, UTM_CAMPOS } from "@/lib/comunidad/consentimiento";
-import { NOMBRE_PRODUCTO, formatoPesos } from "@/lib/comunidad/precio";
+import { fechaCorta, formatoMoneda } from "@/lib/comunidad/precio";
+import { Countdown } from "@/components/comunidad/Countdown";
+import { EnlaceInteres, VistaLanding } from "@/components/comunidad/EventosLanding";
+import { FormInformacion } from "@/components/comunidad/FormInformacion";
+import { botonCls, botonSecundarioCls } from "@/components/comunidad/ui";
 
-/** Página de venta: sí se puede indexar y compartir. */
+/** Página de venta pública: sí se puede indexar y compartir. Vende la propuesta y lleva a crear la cuenta. */
 export const metadata: Metadata = {
-  title: `${NOMBRE_PRODUCTO} · Inscripciones abiertas`,
+  title: "Master IA 360 · Aprende a usar IA en tu negocio",
   description:
-    "Aprende a usar IA en tu negocio, en vivo y acompañado: 4 semanas, 8 clases, entregables y 60 días de comunidad activa.",
+    "Programa en vivo de 4 semanas: 8 clases, entregables y 60 días de comunidad activa. Crea tu cuenta gratis y elige tu entrada dentro de la plataforma.",
   robots: { index: true, follow: true },
 };
 
 export const dynamic = "force-dynamic";
 
-const PREGUNTAS = [
-  ["¿Cuándo empiezan las clases?", "El jueves 22 de octubre. Son 8 clases de 2,5 horas, 2 por semana, 100% virtuales."],
-  ["¿Cómo entro a la plataforma?", "Cuando se confirma tu pago recibes un correo con un botón de acceso. Sin contraseñas."],
-  [
-    "¿Qué pasa si no termino hoy el pago?",
-    "Puedes retomar la compra mientras haya cupos y la oferta siga vigente. Dejar tus datos no reserva un cupo.",
-  ],
-  ["¿Qué necesito aparte?", AVISO_CLAUDE],
-  ["¿Puedo pedir información antes de comprar?", "Sí: deja tus datos en «Quiero información» y te contactamos. No crea una cuenta ni un cobro."],
-] as const;
+type Busqueda = Record<string, string | undefined>;
 
-const RESULTADOS = [
-  ["Una web", "Construyes y publicas tu landing con las plantillas y la guía del programa."],
-  ["Una app", "Diseñas el prototipo de tu app y aprendes a conectarle datos."],
-  ["Una herramienta", "Armas una herramienta interna simple y tu primera tarea automatizada."],
-] as const;
-
-type Busqueda = { cancelado?: string; o?: string; n?: string; p?: string } & Record<string, string | undefined>;
+/** Arma el enlace al registro conservando el programa de interés, el origen y las UTM (saneadas). */
+function enlaceRegistro(base: string, extra: Record<string, string | undefined>, sp: Busqueda): string {
+  const q = new URLSearchParams();
+  q.set("programa", PRODUCTO_PRINCIPAL);
+  for (const [k, v] of Object.entries(extra)) if (v) q.set(k, v);
+  if (sp.o === "stand") q.set("o", "stand");
+  for (const c of UTM_CAMPOS) {
+    const v = sanearUtm(sp[c]);
+    if (v) q.set(c, v);
+  }
+  return `${base}?${q.toString()}`;
+}
 
 export default async function UnetePage({ searchParams }: { searchParams: Promise<Busqueda> }) {
   const sp = await searchParams;
-  const origen = sp.o === "stand" ? "stand" : "web";
+  const miembro = await getMiembro();
 
-  // Disponibilidad SIEMPRE del servidor. Si el servicio de cupos falla se dice, no se aparenta.
-  const disponibles = nivelesDisponibles();
-  const cupos = await cuposRestantes().catch(() => null);
-  const agotado = cupos !== null && cupos.total <= 0;
+  // El catálogo sale de la base: la landing muestra EXACTAMENTE lo que luego se cobra. Si no responde, se dice.
+  let producto = null;
+  let catalogoCaido = false;
+  try {
+    producto = await obtenerProductoPublicado(PRODUCTO_PRINCIPAL);
+  } catch {
+    catalogoCaido = true;
+  }
+  const venta = producto ? await ventaAbierta(producto.id).catch(() => null) : null;
+  const ahora = new Date();
+  const abiertas: OfertaVista[] = (venta?.ofertas ?? []).filter((o) => ventanaDeOferta(o, ahora) === "abierta");
+  const ventaDisponible = venta?.abierta === true;
 
-  const opciones: OpcionNivel[] = disponibles
-    .filter((id) => !(id === "vip" && cupos !== null && cupos.vip <= 0))
-    .map((id) => ({
-      id,
-      nombre: NIVELES[id].nombre,
-      precio: formatoPesos(montoCentavos(id)),
-      nota: NIVELES[id].nota,
-      extras: NIVELES[id].extras,
-    }));
-  const abierto = opciones.length > 0 && !agotado;
-  const inicial: Nivel | undefined = opciones.find((x) => x.id === sp.n)?.id ?? opciones[0]?.id;
+  // Oferta destacada: la primera abierta que tiene fecha de cierre (data-driven, no un «precio de feria» fijo en el código).
+  const destacada = abiertas.find((o) => o.disponibleHasta) ?? null;
+  const conSesion = destacada?.derechos.includes("sesion_arranque") ?? false;
 
-  // Retomar compra: SOLO con la cookie firmada de este navegador. Un `?p=<id>` viejo no da acceso a nada.
-  const idRetomar = await pedidoDelNavegador();
-  const retomado = idRetomar ? await obtenerPedido(idRetomar).catch(() => null) : null;
-  const nombreRetomado =
-    retomado && ["pendiente", "abandonado", "fallido"].includes(retomado.estado) ? retomado.nombre : null;
-  const enlaceViejo = Boolean(sp.p) && !nombreRetomado;
-
+  const hrefCrearCuenta = miembro ? `/comunidad/programas/${PRODUCTO_PRINCIPAL}` : enlaceRegistro("/comunidad/registro", {}, sp);
+  const hrefAsesor = miembro
+    ? `/comunidad/programas/${PRODUCTO_PRINCIPAL}#asesor`
+    : enlaceRegistro("/comunidad/registro", { asesor: "1" }, sp);
   const utm: Record<string, string> = {};
   for (const c of UTM_CAMPOS) {
     const v = sanearUtm(sp[c]);
@@ -88,7 +78,7 @@ export default async function UnetePage({ searchParams }: { searchParams: Promis
 
   return (
     <div className="space-y-14 sm:space-y-20">
-      <VistaLanding />
+      <VistaLanding programa={PRODUCTO_PRINCIPAL} />
 
       {/* Hero */}
       <header className="relative isolate">
@@ -96,23 +86,40 @@ export default async function UnetePage({ searchParams }: { searchParams: Promis
         <p className="mia-eyebrow">Cohorte 1 · empieza el 22 de octubre</p>
         <h1 className="mia-title mt-4 max-w-3xl">Aprende a usar IA en tu negocio, en vivo y acompañado</h1>
         <p className="mia-lead mt-5">
-          {NOMBRE_PRODUCTO} es un programa de 4 semanas, con 8 clases en vivo y entregables, para pasar de «probar
+          Master IA 360 es un programa de 4 semanas, con 8 clases en vivo y entregables, para pasar de «probar
           herramientas» a tener sistemas funcionando en tu negocio.
         </p>
         <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-          <EnlaceCompra href="#entradas" className={botonCls}>
-            Ver entradas
-          </EnlaceCompra>
-          <a href="#informacion" className={botonSecundarioCls + " !min-h-12 px-6 text-base"}>
-            Quiero información
-          </a>
+          {ventaDisponible || !producto ? (
+            <EnlaceInteres programa={PRODUCTO_PRINCIPAL} href={hrefCrearCuenta} className={botonCls}>
+              {miembro ? "Ver el programa en mi cuenta" : "Crear cuenta para continuar"}
+            </EnlaceInteres>
+          ) : (
+            <a href="#lista-de-espera" className={botonCls}>
+              Unirme a la lista de espera
+            </a>
+          )}
+          {ventaDisponible ? (
+            <Link href={hrefAsesor} className={botonSecundarioCls + " !min-h-12 px-6 text-base"}>
+              Quiero que me asesoren
+            </Link>
+          ) : null}
         </div>
-        <div className="mt-6 flex flex-wrap items-center gap-3">
+        <p className="mia-muted mt-4 text-sm">
+          Crear la cuenta es gratis y no es una compra: eliges tu entrada dentro de la plataforma.
+        </p>
+        <div className="mt-5 flex flex-wrap items-center gap-3">
           <span className="mia-chip">100% virtual</span>
           <span className="mia-chip">8 clases en vivo</span>
           <span className="mia-chip">Cupos limitados</span>
         </div>
       </header>
+
+      {catalogoCaido ? (
+        <p role="status" className="mia-alert">
+          No pudimos cargar las entradas y precios en este momento. Vuelve a intentarlo en unos minutos.
+        </p>
+      ) : null}
 
       {/* Resultados */}
       <section aria-labelledby="resultados">
@@ -156,40 +163,44 @@ export default async function UnetePage({ searchParams }: { searchParams: Promis
         </p>
       </section>
 
-      {/* Entradas: se ven ANTES de pedir datos */}
+      {/* Entradas: precios y diferencias visibles ANTES de crear la cuenta */}
       <section id="entradas" aria-labelledby="entradas-titulo" className="scroll-mt-24">
         <p id="entradas-titulo" className="mia-eyebrow">
           Entradas
         </p>
-        {preventaVigente() && abierto ? (
+
+        {destacada && ventaDisponible ? (
           <div className="mia-card-dark mt-4">
-            <p className="mia-eyebrow">Precio de feria · hasta el domingo {fechaLimiteLegible()}</p>
+            <p className="mia-eyebrow">
+              {destacada.nombre} · hasta el {fechaCorta(destacada.disponibleHasta as string)}
+            </p>
             <h2 className="mt-3 text-2xl font-bold sm:text-3xl">
-              {formatoPesos(montoCentavos("preventa"))} y entras con la {SESION_ARRANQUE.titulo.toLowerCase()}
+              {formatoMoneda(destacada.precioCentavos, destacada.moneda)}
+              {conSesion ? ` y entras con la ${SESION_ARRANQUE.titulo.toLowerCase()}` : ""}
             </h2>
-            <p className="mia-lead mt-3">{SESION_ARRANQUE.resumen}</p>
-            <p className="mia-label mt-7 !text-[var(--mia-dark-muted)]">El precio de feria cierra en</p>
-            <Countdown hasta={FIN_PREVENTA.toISOString()} />
+            {conSesion ? <p className="mia-lead mt-3">{SESION_ARRANQUE.resumen}</p> : null}
+            <p className="mia-label mt-7 !text-[var(--mia-dark-muted)]">Esta entrada cierra en</p>
+            <Countdown hasta={new Date(destacada.disponibleHasta as string).toISOString()} />
             <p className="mt-4 text-xs text-[var(--mia-dark-muted)]">
-              Después del {fechaLimiteLegible()} el programa cuesta {formatoPesos(montoCentavos("regular"))} y la sesión
-              grupal de arranque queda solo para el VIP. La sesión 1:1 es exclusiva del VIP.
+              Los precios y la disponibilidad se confirman al comprar dentro de tu cuenta.
             </p>
           </div>
         ) : null}
 
-        {abierto ? (
+        {ventaDisponible ? (
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            {opciones.map((o) => (
+            {abiertas.map((o) => (
               <article key={o.id} className="mia-card flex flex-col">
                 <h2 className="text-lg font-semibold">{o.nombre}</h2>
                 <p className="mt-2 font-[family-name:var(--mia-font-display)] text-3xl font-bold tracking-tight">
-                  {o.precio} <span className="mia-muted text-sm font-normal">COP</span>
+                  {formatoMoneda(o.precioCentavos, o.moneda)}{" "}
+                  <span className="mia-muted text-sm font-normal">{o.moneda.toUpperCase()}</span>
                 </p>
-                <p className="mia-muted mt-1 text-sm">{o.nota}</p>
+                {o.nota ? <p className="mia-muted mt-1 text-sm">{o.nota}</p> : null}
                 <p className="mia-label mt-5">Además de todo lo anterior</p>
                 <ul className="flex-1 space-y-1.5 text-sm">
-                  {o.extras.length ? (
-                    o.extras.map((x) => (
+                  {o.derechos.length || o.extras.length ? (
+                    (o.extras.length ? o.extras : o.derechos.map((d) => ETIQUETA_DERECHO[d] ?? d)).map((x) => (
                       <li key={x} className="flex gap-2">
                         <span aria-hidden="true" className="text-[var(--mia-accent-ink)]">✓</span>
                         {x}
@@ -199,75 +210,72 @@ export default async function UnetePage({ searchParams }: { searchParams: Promis
                     <li className="mia-muted">Sin extras: el programa completo.</li>
                   )}
                 </ul>
-                <EnlaceCompra href={`?n=${o.id}#compra`} nivel={o.id} className={botonCls + " mt-5"}>
-                  Elegir {o.nombre.split(" ·")[0]}
-                </EnlaceCompra>
+                <EnlaceInteres
+                  programa={PRODUCTO_PRINCIPAL}
+                  href={
+                    miembro
+                      ? `/comunidad/programas/${PRODUCTO_PRINCIPAL}#oferta-${o.slug}`
+                      : enlaceRegistro("/comunidad/registro", { oferta: o.slug }, sp)
+                  }
+                  className={botonCls + " mt-5"}
+                >
+                  {miembro ? `Elegir ${o.nombre.split(" ·")[0]}` : "Crear cuenta y elegir"}
+                </EnlaceInteres>
               </article>
             ))}
           </div>
-        ) : (
+        ) : producto ? (
           <p className="mia-alert mt-4">
-            {agotado
-              ? "Los cupos de esta cohorte se agotaron."
-              : "Las inscripciones de esta cohorte cerraron."}{" "}
-            Puedes dejar tus datos en la lista de espera aquí abajo; no es una reserva.
+            Las inscripciones de esta cohorte no están disponibles en este momento (cerraron o se agotaron los cupos).
+            Puedes dejar tus datos en la lista de espera; no es una reserva.
           </p>
-        )}
-        {cupos === null ? (
+        ) : null}
+        {venta?.cuposDesconocidos ? (
           <p role="status" className="mia-muted mt-3 text-sm">
-            No pudimos consultar los cupos en este momento. La disponibilidad se confirma al continuar con la compra.
+            No pudimos consultar los cupos ahora. La disponibilidad se confirma al comprar.
           </p>
         ) : null}
       </section>
 
-      {/* Compra */}
-      {abierto && inicial ? (
-        <section id="compra" aria-labelledby="compra-titulo" className="scroll-mt-24">
-          <p id="compra-titulo" className="mia-eyebrow">
-            Comprar
-          </p>
-          {sp.cancelado ? (
-            <p role="status" className="mia-alert mt-4">
-              No se completó el pago. Puedes retomar la compra mientras haya cupos y la oferta siga vigente.
-            </p>
-          ) : null}
-          {enlaceViejo ? (
-            <p role="status" className="mia-alert mt-4">
-              Para proteger tus datos, retomamos una compra solo desde el mismo navegador donde la empezaste. Vuelve a
-              llenar tus datos y listo.
-            </p>
-          ) : null}
-          <div className="mia-card mx-auto mt-4 max-w-xl">
-            <FormCompra niveles={opciones} nivelInicial={inicial} origen={origen} nombreRetomado={nombreRetomado} />
+      {/* Siguiente paso */}
+      {ventaDisponible ? (
+        <section aria-labelledby="como-sigue" className="mia-card mx-auto max-w-2xl text-center">
+          <h2 id="como-sigue" className="text-xl font-bold">
+            Cómo sigue
+          </h2>
+          <ol className="mia-muted mt-3 space-y-1 text-sm">
+            <li>1. Creas tu cuenta gratis y confirmas tu correo.</li>
+            <li>2. Eliges tu entrada y pagas dentro de la plataforma.</li>
+            <li>3. Cuando se confirma el pago, el programa aparece en «Mis programas».</li>
+          </ol>
+          <div className="mt-5 flex flex-col justify-center gap-3 sm:flex-row">
+            <EnlaceInteres programa={PRODUCTO_PRINCIPAL} href={hrefCrearCuenta} className={botonCls}>
+              {miembro ? "Ver el programa en mi cuenta" : "Crear cuenta para continuar"}
+            </EnlaceInteres>
+            {!miembro ? (
+              <Link href={`/comunidad/login?next=/comunidad/programas/${PRODUCTO_PRINCIPAL}`} className={botonSecundarioCls + " !min-h-12 px-6 text-base"}>
+                Ya tengo cuenta
+              </Link>
+            ) : null}
           </div>
-          <p className="mia-muted mt-4 text-center text-sm">
-            ¿Ya tienes cuenta?{" "}
-            <Link href="/comunidad/login" className="mia-link">
-              Inicia sesión
-            </Link>
-            {" · "}
-            <Link href="/comunidad/registro" className="mia-link">
-              Crear cuenta
-            </Link>
-          </p>
         </section>
       ) : null}
 
-      {/* Información / lista de espera: independiente de la compra */}
-      <section id="informacion" aria-labelledby="informacion-titulo" className="scroll-mt-24">
-        <p className="mia-eyebrow">{abierto ? "Información" : "Lista de espera"}</p>
-        <div className="mia-card mx-auto mt-4 max-w-xl">
-          <h2 id="informacion-titulo" className="text-xl font-bold">
-            {abierto ? "¿Quieres resolver tus dudas antes de comprar?" : "Déjanos tus datos para la próxima cohorte"}
-          </h2>
-          <p className="mia-muted mb-5 mt-2 text-sm leading-relaxed">
-            {abierto
-              ? "Cuéntanos quién eres y te contactamos. Pedir información no crea una cuenta, un cobro ni reserva un cupo."
-              : "Queda en la lista de espera. No es una reserva ni un cobro."}
-          </p>
-          <FormInformacion origen={origen} utm={utm} listaDeEspera={!abierto} />
-        </div>
-      </section>
+      {/* Lista de espera: solo con ventas cerradas o sin cupos */}
+      {producto && !ventaDisponible ? (
+        <section id="lista-de-espera" aria-labelledby="espera-titulo" className="scroll-mt-24">
+          <p className="mia-eyebrow">Lista de espera</p>
+          <div className="mia-card mx-auto mt-4 max-w-xl">
+            <h2 id="espera-titulo" className="text-xl font-bold">
+              Déjanos tus datos para la próxima cohorte
+            </h2>
+            <p className="mia-muted mb-5 mt-2 text-sm leading-relaxed">
+              Queda en la lista de espera. No es una reserva ni un cobro, y no crea una cuenta.
+            </p>
+            <FormInformacion origen={sp.o === "stand" ? "stand" : "web"} utm={utm} listaDeEspera />
+          </div>
+        </section>
+      ) : null}
 
       {/* FAQ */}
       <section aria-labelledby="faq">
@@ -275,7 +283,7 @@ export default async function UnetePage({ searchParams }: { searchParams: Promis
           Preguntas frecuentes
         </p>
         <div className="mt-4 divide-y divide-[var(--mia-border)] rounded-2xl border border-[var(--mia-border)] bg-[var(--mia-elev)]">
-          {PREGUNTAS.map(([q, a]) => (
+          {FAQ_MASTER.map(([q, a]) => (
             <details key={q} className="group p-5">
               <summary className="cursor-pointer list-none text-sm font-semibold">{q}</summary>
               <p className="mia-muted mt-2 text-sm leading-relaxed">{a}</p>
