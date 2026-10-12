@@ -59,3 +59,27 @@ export const compraSchema = z.object({
   nivel: z.enum(["preventa", "regular", "vip"]),
 });
 export type CompraInput = z.infer<typeof compraSchema>;
+
+/**
+ * Registro de cuenta (gratuita, sin inscripción). Privacidad obligatoria y
+ * SIN preseleccionar; marketing opcional y separado: no marcarlo no bloquea nada.
+ */
+export const registroSchema = z.object({
+  nombre: texto(2, 120),
+  email: correoSchema,
+  whatsapp: whatsappSchema,
+  privacidad: z.literal("on", { error: "Debes aceptar el tratamiento de datos para crear tu cuenta." }),
+  marketing: z.literal("on").optional(),
+});
+export type RegistroInput = z.infer<typeof registroSchema>;
+
+/** Solicitud de información / lista de espera: no crea cuenta ni pedido. */
+export const informacionSchema = z.object({
+  nombre: texto(2, 120),
+  email: correoSchema,
+  whatsapp: whatsappSchema,
+  privacidad: z.literal("on", { error: "Debes aceptar el tratamiento de datos para enviarnos tu solicitud." }),
+  marketing: z.literal("on").optional(),
+  request_key: z.uuid("Solicitud no válida"),
+});
+export type InformacionInput = z.infer<typeof informacionSchema>;

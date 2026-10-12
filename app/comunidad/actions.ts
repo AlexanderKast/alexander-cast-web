@@ -13,10 +13,12 @@ import {
   requireMiembroConPrivacidad,
 } from "@/lib/comunidad/auth";
 import { altaAlumno } from "@/lib/comunidad/altas";
-import { enviarAcceso, enviarAccesosEnLote } from "@/lib/comunidad/correo";
+import { enviarAcceso, enviarAccesosEnLote, enviarVerificacionRegistro } from "@/lib/comunidad/correo";
+import { rutaInternaPermitida } from "@/lib/comunidad/acceso";
+import { guardarRegistroPendiente } from "@/lib/comunidad/registro";
 import { parseAlumnosCsv } from "@/lib/comunidad/csv";
 import { listarCohortes } from "@/lib/comunidad/queries";
-import { alumnoSchema, correoSchema, fichaSchema } from "@/lib/comunidad/validators";
+import { alumnoSchema, correoSchema, fichaSchema, registroSchema } from "@/lib/comunidad/validators";
 
 export type EstadoForm =
   | { status: "idle" }
@@ -37,7 +39,31 @@ function erroresPorCampo(issues: { path: PropertyKey[]; message: string }[]) {
    ============================================================ */
 
 const RESPUESTA_GENERICA =
-  "Si tu correo está inscrito, te enviamos el enlace de acceso. Revisa tu bandeja y la carpeta de spam.";
+  "Si tu correo tiene una cuenta, te enviamos el enlace de acceso. Revisa tu bandeja y la carpeta de spam.";
+
+const RESPUESTA_REGISTRO =
+  "Te enviamos un enlace para confirmar tu correo. Revisa tu bandeja y la carpeta de spam; al confirmarlo, tu cuenta queda lista.";
+
+/** Claves que el servidor necesita para generar y enviar enlaces de acceso. */
+function faltanClavesDeCorreo(): string[] {
+  return [
+    !(process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL) && "SUPABASE_URL",
+    !process.env.SUPABASE_SERVICE_ROLE_KEY && "SUPABASE_SERVICE_ROLE_KEY",
+    !process.env.RESEND_API_KEY && "RESEND_API_KEY",
+    !(process.env.COMUNIDAD_RESEND_FROM ?? process.env.RESEND_FROM) && "RESEND_FROM",
+  ].filter(Boolean) as string[];
+}
+
+function errorDeConfiguracion(faltan: string[]): EstadoForm {
+  console.error(`[comunidad] El acceso por correo no está configurado. Faltan: ${faltan.join(", ")}`);
+  return {
+    status: "error",
+    message:
+      process.env.NODE_ENV === "production"
+        ? "El servicio de correo no está disponible en este momento. Intenta más tarde."
+        : `Falta configurar el servidor: ${faltan.join(", ")} (agrégalas en .env.local).`,
+  };
+}
 
 export async function solicitarAcceso(_p: EstadoForm, fd: FormData): Promise<EstadoForm> {
   // Honeypot: un humano no llena este campo.
@@ -58,22 +84,11 @@ export async function solicitarAcceso(_p: EstadoForm, fd: FormData): Promise<Est
 
   // Sin claves del servidor el correo NUNCA saldría: mejor decirlo que fingir
   // un envío (no revela nada sobre quién está inscrito).
-  const faltan = [
-    !(process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL) && "SUPABASE_URL",
-    !process.env.SUPABASE_SERVICE_ROLE_KEY && "SUPABASE_SERVICE_ROLE_KEY",
-    !process.env.RESEND_API_KEY && "RESEND_API_KEY",
-    !(process.env.COMUNIDAD_RESEND_FROM ?? process.env.RESEND_FROM) && "RESEND_FROM",
-  ].filter(Boolean) as string[];
-  if (faltan.length) {
-    console.error(`[comunidad] El acceso por correo no está configurado. Faltan: ${faltan.join(", ")}`);
-    return {
-      status: "error",
-      message:
-        process.env.NODE_ENV === "production"
-          ? "El acceso por correo no está disponible en este momento. Intenta más tarde."
-          : `Falta configurar el servidor: ${faltan.join(", ")} (agrégalas en .env.local).`,
-    };
-  }
+  const faltan = faltanClavesDeCorreo();
+  if (faltan.length) return errorDeConfiguracion(faltan);
+
+  // `next` solo se respeta si es una de las rutas internas permitidas.
+  const next = rutaInternaPermitida(fd.get("next"));
 
   // Misma respuesta exista o no el correo (no se revela quién está inscrito),
   // y el envío va después de responder para que el tiempo tampoco lo delate.
@@ -84,12 +99,66 @@ export async function solicitarAcceso(_p: EstadoForm, fd: FormData): Promise<Est
       .eq("email", email)
       .maybeSingle();
     if (perfil) {
-      const r = await enviarAcceso(email, perfil.nombre as string);
+      const r = await enviarAcceso(email, perfil.nombre as string, { next });
       if (!r.ok) console.error("[comunidad] fallo enviando acceso:", r.error);
     }
   });
 
   return { status: "ok", message: RESPUESTA_GENERICA };
+}
+
+/* ============================================================
+   Público: crear una cuenta (sin inscripción, sin pedido)
+   ============================================================ */
+
+/**
+ * Guarda un registro PENDIENTE y envía el enlace de verificación. No crea perfil,
+ * sesión ni inscripción: eso solo ocurre al canjear el enlace (prueba de control
+ * del correo). La respuesta es la misma exista o no la cuenta.
+ */
+export async function solicitarRegistro(_p: EstadoForm, fd: FormData): Promise<EstadoForm> {
+  if (fd.get("website")) return { status: "ok", message: RESPUESTA_REGISTRO }; // honeypot
+
+  const hdrs = await headers();
+  if (!isSameOriginStrict(hdrs)) return { status: "error", message: "Solicitud no válida." };
+
+  const parsed = registroSchema.safeParse({
+    nombre: fd.get("nombre"),
+    email: fd.get("email"),
+    whatsapp: fd.get("whatsapp") ?? "",
+    privacidad: fd.get("privacidad") ?? "no",
+    marketing: fd.get("marketing") ?? undefined,
+  });
+  if (!parsed.success) {
+    return { status: "error", message: "Revisa los datos.", fieldErrors: erroresPorCampo(parsed.error.issues) };
+  }
+  const d = parsed.data;
+
+  const porIp = await formLimiter(`mia:reg:ip:${clientIp(hdrs)}`);
+  const porCorreo = await emailLimiter(`mia:reg:em:${d.email}`);
+  if (!porIp.success || !porCorreo.success) {
+    return { status: "error", message: "Muchos intentos seguidos. Prueba en unos minutos." };
+  }
+
+  const faltan = faltanClavesDeCorreo();
+  if (faltan.length) return errorDeConfiguracion(faltan);
+
+  after(async () => {
+    try {
+      const registroId = await guardarRegistroPendiente({
+        email: d.email,
+        nombre: d.nombre,
+        whatsapp: d.whatsapp,
+        marketing: d.marketing === "on",
+      });
+      const r = await enviarVerificacionRegistro(d.email, d.nombre, registroId);
+      if (!r.ok) console.error("[comunidad] fallo enviando la verificación de registro:", r.error);
+    } catch (e) {
+      console.error("[comunidad] fallo guardando el registro pendiente:", e);
+    }
+  });
+
+  return { status: "ok", message: RESPUESTA_REGISTRO };
 }
 
 /* ============================================================
@@ -170,6 +239,7 @@ export async function crearAlumno(_p: EstadoForm, fd: FormData): Promise<EstadoF
       whatsapp: d.whatsapp,
       entrada: d.entrada,
       cohorteId: d.cohorte_id,
+      actualizarPerfil: true, // alta hecha por un admin: tiene autoridad sobre los datos
     });
   } catch (e) {
     return { status: "error", message: e instanceof Error ? e.message : "No se pudo dar de alta." };
@@ -231,6 +301,7 @@ export async function importarAlumnos(_p: EstadoForm, fd: FormData): Promise<Est
         whatsapp: f.whatsapp || undefined,
         entrada: f.entrada,
         cohorteId,
+        actualizarPerfil: true, // importación de un admin
       });
       creados++;
     } catch (e) {

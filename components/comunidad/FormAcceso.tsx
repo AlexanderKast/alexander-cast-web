@@ -4,11 +4,12 @@ import { useActionState } from "react";
 import { solicitarAcceso } from "@/app/comunidad/actions";
 import { Aviso, Campo, INICIAL, botonCls, inputCls } from "./ui";
 
-export function FormAcceso() {
+export function FormAcceso({ next }: { next?: string | null }) {
   const [estado, accion, pendiente] = useActionState(solicitarAcceso, INICIAL);
 
   return (
-    <form action={accion} className="space-y-4">
+    <form action={accion} className="space-y-4" noValidate={false}>
+      {next ? <input type="hidden" name="next" value={next} /> : null}
       <Campo etiqueta="Tu correo">
         <input
           name="email"
@@ -29,7 +30,7 @@ export function FormAcceso() {
         className="absolute -left-[9999px] h-0 w-0 opacity-0"
       />
       <button type="submit" disabled={pendiente} className={botonCls + " mia-btn-block"}>
-        {pendiente ? "Enviando…" : "Enviarme el enlace de acceso"}
+        {pendiente ? "Enviando…" : "Enviarme el enlace"}
       </button>
       <Aviso estado={estado} />
     </form>

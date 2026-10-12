@@ -1,5 +1,7 @@
 import { Resend } from "resend";
 import { createSupabaseServiceRole } from "@/lib/supabase/server";
+import { rutaInternaPermitida } from "./acceso";
+import { baseUrl } from "./url";
 
 /**
  * Correos de acceso de la comunidad.
@@ -14,6 +16,10 @@ import { createSupabaseServiceRole } from "@/lib/supabase/server";
  *
  * El enlace apunta a una página con un botón (no verifica al abrirse): los
  * escáneres de correo abren los enlaces y se gastarían el token de un solo uso.
+ *
+ * Tipo de token: lo decide Supabase. Para una cuenta que ya existe es
+ * «magiclink»; para un correo nuevo puede ser «signup». Se lee de
+ * `properties.verification_type` y viaja en el enlace (lista cerrada), no se asume.
  */
 
 let cliente: Resend | null = null;
@@ -31,10 +37,6 @@ function remitente(): string {
   return from;
 }
 
-function baseUrl(): string {
-  return (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/+$/, "");
-}
-
 const esc = (v: string) =>
   v
     .replace(/&/g, "&amp;")
@@ -42,36 +44,78 @@ const esc = (v: string) =>
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 
-/** Genera el enlace de acceso para un correo que ya existe en auth. */
-export async function generarEnlaceAcceso(email: string): Promise<string | null> {
+export const TIPOS_TOKEN_PERMITIDOS = ["magiclink", "signup"] as const;
+export type TipoToken = (typeof TIPOS_TOKEN_PERMITIDOS)[number];
+
+export const esTipoToken = (v: unknown): v is TipoToken =>
+  typeof v === "string" && (TIPOS_TOKEN_PERMITIDOS as readonly string[]).includes(v);
+
+export interface OpcionesEnlace {
+  /** Ruta interna a la que volver tras entrar (lista cerrada, ver acceso.ts). */
+  next?: string | null;
+  /** Registro pendiente que se aplica SOLO si quien abre el enlace verifica ese mismo correo. */
+  registroId?: string;
+}
+
+/**
+ * Genera el enlace de acceso. Si el correo no existe en auth, Supabase crea la
+ * cuenta SIN confirmar (se confirma al canjear el enlace, que prueba el control del correo).
+ */
+export async function generarEnlaceAcceso(email: string, opts: OpcionesEnlace = {}): Promise<string | null> {
   const admin = createSupabaseServiceRole();
   const { data, error } = await admin.auth.admin.generateLink({ type: "magiclink", email });
   const hash = data?.properties?.hashed_token;
   if (error || !hash) return null;
-  return `${baseUrl()}/comunidad/auth/confirmar?token_hash=${encodeURIComponent(hash)}`;
+
+  const tipo = esTipoToken(data?.properties?.verification_type) ? data.properties.verification_type : "magiclink";
+  const url = new URL(`${baseUrl()}/comunidad/auth/confirmar`);
+  url.searchParams.set("token_hash", hash);
+  url.searchParams.set("type", tipo);
+  if (opts.registroId) url.searchParams.set("reg", opts.registroId);
+  const next = rutaInternaPermitida(opts.next);
+  if (next) url.searchParams.set("next", next);
+  return url.toString();
 }
 
-function cuerpoCorreo(nombre: string, enlace: string, compra = false) {
-  const subject = compra ? "Pago recibido: ya eres parte de Master IA 360" : "Tu acceso a Master IA 360";
-  const intro = compra
-    ? "Recibimos tu pago, ¡bienvenido a <strong>Master IA 360</strong>! Tu cuenta ya está lista. Sin contraseña: toca el botón y entras."
-    : "Este es tu acceso a la plataforma de <strong>Master IA 360</strong>. Sin contraseña: toca el botón y entras.";
-  const introTxt = compra
-    ? "Recibimos tu pago, bienvenido a Master IA 360. Tu cuenta ya está lista."
-    : "Tu acceso a Master IA 360:";
+type Variante = "acceso" | "compra" | "registro";
+
+function cuerpoCorreo(nombre: string, enlace: string, variante: Variante) {
+  const textos: Record<Variante, { subject: string; intro: string; introTxt: string; boton: string }> = {
+    acceso: {
+      subject: "Tu acceso a Master IA 360",
+      intro: "Este es tu acceso a la plataforma de <strong>Master IA 360</strong>. Sin contraseña: toca el botón y entras.",
+      introTxt: "Tu acceso a Master IA 360:",
+      boton: "Entrar a la plataforma",
+    },
+    compra: {
+      subject: "Pago recibido: ya eres parte de Master IA 360",
+      intro:
+        "Recibimos tu pago, ¡bienvenido a <strong>Master IA 360</strong>! Tu cuenta ya está lista. Sin contraseña: toca el botón y entras.",
+      introTxt: "Recibimos tu pago, bienvenido a Master IA 360. Tu cuenta ya está lista.",
+      boton: "Entrar a la plataforma",
+    },
+    registro: {
+      subject: "Confirma tu correo para crear tu cuenta de Master IA 360",
+      intro:
+        "Para terminar de crear tu cuenta en <strong>Master IA 360</strong>, confirma que este correo es tuyo. La cuenta no incluye el programa: la compra es aparte.",
+      introTxt: "Confirma tu correo para terminar de crear tu cuenta en Master IA 360 (el programa se compra aparte):",
+      boton: "Confirmar mi correo",
+    },
+  };
+  const t = textos[variante];
   const html = `
     <div style="font-family:Arial,sans-serif;color:#0A0A0A;max-width:520px;margin:0 auto;padding:24px;">
       <h1 style="font-size:22px;margin:0 0 16px;">Hola ${esc(nombre)},</h1>
-      <p style="font-size:16px;line-height:1.6;">${intro}</p>
+      <p style="font-size:16px;line-height:1.6;">${t.intro}</p>
       <p style="margin:28px 0;">
-        <a href="${esc(enlace)}" style="background:#D4AF37;color:#0A0A0A;padding:14px 24px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">Entrar a la plataforma</a>
+        <a href="${esc(enlace)}" style="background:#A3E635;color:#050705;padding:14px 24px;border-radius:999px;text-decoration:none;font-weight:700;display:inline-block;">${t.boton}</a>
       </p>
       <p style="font-size:14px;line-height:1.6;color:#555;">El enlace funciona una sola vez y vence en 1 hora. Si caduca, entra a <a href="${baseUrl()}/comunidad/login">${baseUrl().replace(/^https?:\/\//, "")}/comunidad/login</a> y pide otro.</p>
-      <p style="font-size:14px;line-height:1.6;color:#555;">Si no esperabas este correo, ignóralo.</p>
+      <p style="font-size:14px;line-height:1.6;color:#555;">Si no esperabas este correo, ignóralo: no se crea ni se cambia nada.</p>
       <p style="font-size:16px;margin-top:24px;">Alexander Cast</p>
     </div>`;
-  const text = `Hola ${nombre},\n\n${introTxt} ${enlace}\n\nFunciona una sola vez y vence en 1 hora.\n\nAlexander Cast`;
-  return { subject, html, text };
+  const text = `Hola ${nombre},\n\n${t.introTxt} ${enlace}\n\nFunciona una sola vez y vence en 1 hora. Si no esperabas este correo, ignóralo.\n\nAlexander Cast`;
+  return { subject: t.subject, html, text };
 }
 
 export type ResultadoEnvio = { ok: true } | { ok: false; error: string };
@@ -79,12 +123,29 @@ export type ResultadoEnvio = { ok: true } | { ok: false; error: string };
 export async function enviarAcceso(
   email: string,
   nombre: string,
-  opts: { compra?: boolean } = {},
+  opts: { compra?: boolean; next?: string | null } = {},
 ): Promise<ResultadoEnvio> {
   try {
-    const enlace = await generarEnlaceAcceso(email);
+    const enlace = await generarEnlaceAcceso(email, { next: opts.next });
     if (!enlace) return { ok: false, error: "No se pudo generar el enlace." };
-    const { subject, html, text } = cuerpoCorreo(nombre, enlace, opts.compra);
+    const { subject, html, text } = cuerpoCorreo(nombre, enlace, opts.compra ? "compra" : "acceso");
+    const { error } = await resend().emails.send({ from: remitente(), to: email, subject, html, text });
+    return error ? { ok: false, error: error.message } : { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Error desconocido" };
+  }
+}
+
+/** Correo de verificación del registro: el enlace lleva el id del registro pendiente. */
+export async function enviarVerificacionRegistro(
+  email: string,
+  nombre: string,
+  registroId: string,
+): Promise<ResultadoEnvio> {
+  try {
+    const enlace = await generarEnlaceAcceso(email, { registroId, next: "/comunidad/mi-cuenta" });
+    if (!enlace) return { ok: false, error: "No se pudo generar el enlace." };
+    const { subject, html, text } = cuerpoCorreo(nombre, enlace, "registro");
     const { error } = await resend().emails.send({ from: remitente(), to: email, subject, html, text });
     return error ? { ok: false, error: error.message } : { ok: true };
   } catch (e) {
@@ -113,7 +174,7 @@ export async function enviarAccesosEnLote(
         fallidos.push(d.email);
         continue;
       }
-      mensajes.push({ from: remitente(), to: d.email, ...cuerpoCorreo(d.nombre, enlace) });
+      mensajes.push({ from: remitente(), to: d.email, ...cuerpoCorreo(d.nombre, enlace, "acceso") });
       correosTanda.push(d.email);
     }
     if (!mensajes.length) continue;

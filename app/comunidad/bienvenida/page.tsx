@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { requireMiembro } from "@/lib/comunidad/auth";
+import { requireInscripcion } from "@/lib/comunidad/auth";
 import { aceptarPrivacidad } from "../actions";
 import { botonCls } from "@/components/comunidad/ui";
 
 export default async function BienvenidaPage() {
-  const m = await requireMiembro();
+  const m = await requireInscripcion(); // sin inscripción vigente va a «mi cuenta»
   if (m.privacidadAceptada) redirect("/comunidad");
 
   return (

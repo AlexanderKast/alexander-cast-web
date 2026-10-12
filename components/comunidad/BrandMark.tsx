@@ -1,9 +1,9 @@
 import Link from "next/link";
 
 /** Glifo de circuito de IA Master Tech, en versión clara, con la marca del programa. */
-export function BrandMark() {
+export function BrandMark({ href = "/comunidad" }: { href?: string }) {
   return (
-    <Link href="/comunidad" className="flex items-center gap-3 rounded-lg" aria-label="Master IA 360 — inicio">
+    <Link href={href} className="flex items-center gap-3 rounded-lg" aria-label="Master IA 360 — inicio">
       <svg viewBox="0 0 32 32" className="size-8 shrink-0" aria-hidden="true">
         <rect x="1" y="1" width="30" height="30" rx="9" fill="#050705" />
         <path
