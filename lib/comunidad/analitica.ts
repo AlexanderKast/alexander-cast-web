@@ -10,7 +10,8 @@ import "server-only";
 export type EventoServidor =
   | "registration_verified"
   | "login_success"
-  | "advisor_requested"
+  | "advisor_requested" // solicitud de asesoría YA guardada en servidor (= advisor_request_saved del plan de medición)
+  | "qualified_opportunity" // el comercial asignado la pasa a «propuesta» (definición en docs/claude-landings/05)
   | "checkout_started"
   | "purchase_confirmed";
 

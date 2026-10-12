@@ -3,11 +3,13 @@
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { isSameOriginStrict } from "@/lib/same-origin";
+import { PRODUCTO_PRINCIPAL } from "@/lib/comunidad/oferta";
 import { requireComercial } from "@/lib/comunidad/auth";
 import { uuidValido } from "@/lib/comunidad/acceso";
 import { agregarNota, asignarComercial, cambiarEstado, fijarOferta, generarPedido } from "@/lib/comunidad/oportunidades";
 import type { Actor, EstadoOportunidad } from "@/lib/comunidad/oportunidades-reglas";
 import { baseUrl } from "@/lib/comunidad/url";
+import { registrarEvento } from "@/lib/comunidad/analitica";
 
 /**
  * Acciones de la venta asistida. Todas exigen sesión de comercial o admin y vuelven a comprobar los permisos por
@@ -46,7 +48,10 @@ export async function cambiarEstadoAccion(_p: EstadoComercial, fd: FormData): Pr
   if (typeof destino !== "string" || !ESTADOS.includes(destino as EstadoOportunidad)) {
     return { status: "error", message: "Estado no válido." };
   }
-  return resultado(await cambiarEstado(c.actor, c.id, destino as EstadoOportunidad), c.id, "Estado actualizado.");
+  const r = await cambiarEstado(c.actor, c.id, destino as EstadoOportunidad);
+  // Oportunidad cualificada = el comercial asignado la lleva a «propuesta» (sin datos personales en el evento).
+  if (r.ok && destino === "propuesta") await registrarEvento("qualified_opportunity", { producto: PRODUCTO_PRINCIPAL });
+  return resultado(r, c.id, "Estado actualizado.");
 }
 
 export async function asignarAccion(_p: EstadoComercial, fd: FormData): Promise<EstadoComercial> {

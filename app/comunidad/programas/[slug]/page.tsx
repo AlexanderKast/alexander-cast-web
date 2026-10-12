@@ -18,6 +18,7 @@ import {
 import { fechaCorta, formatoMoneda } from "@/lib/comunidad/precio";
 import { BotonComprar } from "@/components/comunidad/AccionOferta";
 import { FormAsesor } from "@/components/comunidad/FormAsesor";
+import { EventoUnaVez } from "@/components/comunidad/EventosLanding";
 import { botonSecundarioCls } from "@/components/comunidad/ui";
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
@@ -72,6 +73,7 @@ export default async function ProgramaDetalle({ params }: { params: Promise<{ sl
 
   return (
     <div className="space-y-10">
+      <EventoUnaVez nombre="internal_product_view" props={{ product_id: producto.slug }} />
       <div>
         <Link href="/comunidad/programas" className="mia-back">
           ← Programas

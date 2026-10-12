@@ -1,0 +1,252 @@
+/*
+ * Storytelling de las landings: barra de progreso, aparición al scroll, cifras e historia con scroll sobre el
+ * video sin fondo de los tres módulos. Prefijo .ml- y siempre bajo [data-theme="mia"].
+ */
+
+/* ── Barra de progreso de lectura (CSS puro, solo donde hay scroll-timeline) ─ */
+.ml-progreso-lectura {
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: 3px;
+  z-index: 60;
+  background: var(--mia-accent);
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+  pointer-events: none;
+}
+@supports (animation-timeline: scroll()) {
+  .ml-progreso-lectura {
+    animation: ml-leer linear both;
+    animation-timeline: scroll(root block);
+  }
+  @keyframes ml-leer {
+    to {
+      transform: scaleX(1);
+    }
+  }
+  /* Profundidad sutil: la escena del hero se desplaza más despacio que la página. */
+  .ml-hero .ml-escena {
+    animation: ml-paralaje linear both;
+    animation-timeline: view();
+    animation-range: exit 0% exit 100%;
+  }
+  @keyframes ml-paralaje {
+    to {
+      transform: translateY(2.5rem) scale(0.97);
+    }
+  }
+}
+
+/* ── Aparición al hacer scroll (solo se oculta cuando EfectosScroll ya está activo) ─ */
+[data-theme="mia"] .ml-landing[data-js] [data-reveal]:not([data-in]) {
+  opacity: 0;
+  transform: translateY(22px);
+}
+[data-theme="mia"] .ml-landing [data-reveal] {
+  transition:
+    opacity 650ms var(--mia-ease),
+    transform 650ms var(--mia-ease);
+  transition-delay: calc(var(--i, 0) * 90ms);
+}
+
+/* ── Cifras ──────────────────────────────────────────────── */
+.ml-cifras {
+  margin-top: 3rem;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem 1rem;
+  padding: 1.5rem 0;
+  border-block: 1px solid var(--mia-border);
+}
+.ml-cifra {
+  font-family: var(--mia-font-display);
+  font-weight: 700;
+  font-size: clamp(2rem, 6vw, 3.1rem);
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.ml-cifra-etq {
+  margin-top: 0.4rem;
+  font-family: var(--mia-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mia-muted);
+}
+@media (min-width: 768px) {
+  .ml-cifras {
+    grid-template-columns: repeat(4, 1fr);
+    margin-top: 4rem;
+  }
+}
+.ml-tres {
+  margin-top: 2rem;
+  display: grid;
+  gap: 1rem;
+}
+@media (min-width: 768px) {
+  .ml-tres {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ── Historia con scroll ─────────────────────────────────── */
+.ml-historia {
+  margin-top: 4.5rem;
+  margin-inline: calc(50% - 50vw);
+  background: var(--mia-dark);
+  color: var(--mia-dark-text);
+}
+.ml-historia :is(h2, h3) {
+  color: var(--mia-dark-text);
+}
+.ml-historia-escenario {
+  position: relative;
+  max-width: 64rem;
+  margin-inline: auto;
+  padding: 3rem 1rem;
+  display: grid;
+  gap: 1.5rem;
+  align-items: center;
+}
+.ml-historia-visual {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 39 / 20;
+}
+.ml-historia-visual img,
+.ml-historia-visual picture,
+.ml-historia-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.ml-historia-video {
+  position: absolute;
+  inset: 0;
+}
+.ml-capitulo h3 {
+  margin-top: 0.8rem;
+  font-size: clamp(1.5rem, 5vw, 2.3rem);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+.ml-capitulo-texto {
+  margin-top: 0.8rem;
+  color: var(--mia-dark-muted);
+  line-height: 1.6;
+  max-width: 46ch;
+}
+.ml-capitulo-nota {
+  margin-top: 0.7rem;
+  font-size: 0.8125rem;
+  color: var(--mia-dark-muted);
+  opacity: 0.85;
+  max-width: 46ch;
+}
+.ml-capitulo-cta {
+  margin-top: 1.4rem;
+}
+.ml-historia .mia-chip {
+  background: rgba(163, 230, 53, 0.14);
+  color: var(--mia-accent);
+}
+
+/* Modo estático (reducir movimiento, ahorro de datos, Safari): poster + capítulos apilados. */
+.ml-historia[data-modo="estatico"] .ml-historia-textos {
+  display: grid;
+  gap: 2.5rem;
+}
+@media (min-width: 768px) {
+  .ml-historia[data-modo="estatico"] .ml-historia-escenario {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+  .ml-historia[data-modo="estatico"] .ml-historia-visual {
+    position: sticky;
+    top: 6rem;
+  }
+}
+
+/* Modo scrub: escenario fijo mientras se recorre la pista. */
+.ml-historia[data-modo="scrub"] .ml-historia-pista {
+  height: calc(var(--n) * 78svh + 100svh);
+}
+.ml-historia[data-modo="scrub"] .ml-historia-escenario {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  padding-block: 6.5rem 2.5rem;
+  align-content: center;
+  grid-template-rows: auto 1fr;
+}
+.ml-historia[data-modo="scrub"] .ml-historia-textos {
+  position: relative;
+  min-height: 15rem;
+}
+.ml-historia[data-modo="scrub"] .ml-capitulo {
+  position: absolute;
+  inset: 0 0 auto 0;
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 380ms var(--mia-ease),
+    transform 380ms var(--mia-ease);
+  pointer-events: none;
+}
+.ml-historia[data-modo="scrub"] .ml-capitulo[data-activo="true"] {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+@media (min-width: 768px) {
+  .ml-historia[data-modo="scrub"] .ml-historia-escenario {
+    grid-template-columns: 1fr 1.15fr;
+    grid-template-rows: none;
+    gap: 2rem;
+  }
+  .ml-historia[data-modo="scrub"] .ml-historia-visual {
+    order: 2;
+  }
+  .ml-historia[data-modo="scrub"] .ml-historia-textos {
+    order: 1;
+    min-height: 22rem;
+  }
+}
+.ml-historia-progreso {
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  bottom: 1.2rem;
+  max-width: 62rem;
+  margin-inline: auto;
+  display: flex;
+  gap: 6px;
+  height: 3px;
+}
+.ml-historia-progreso span {
+  flex: 1;
+  background: rgba(247, 254, 231, 0.18);
+  border-radius: 2px;
+  transition: background 300ms;
+}
+.ml-historia-progreso span[data-on="true"] {
+  background: var(--mia-accent);
+}
+.ml-historia-progreso i {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="mia"] .ml-landing [data-reveal] {
+    transition: none;
+  }
+  .ml-progreso-lectura,
+  .ml-hero .ml-escena {
+    animation: none !important;
+  }
+}

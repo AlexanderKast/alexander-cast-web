@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { solicitarRegistro } from "@/app/comunidad/actions";
+import { track } from "@vercel/analytics";
 import { Aviso, Campo, INICIAL, botonCls, inputCls } from "./ui";
 
 export interface IntencionForm {
@@ -44,6 +45,7 @@ function FormularioRegistro({
 }) {
   const [estado, accion, pendiente] = useActionState(solicitarRegistro, INICIAL);
   const [canal, setCanal] = useState<"whatsapp" | "correo">("whatsapp");
+  const iniciado = useRef(false);
   const errores = estado.status === "error" ? (estado.fieldErrors ?? {}) : {};
 
   // Tras enviar, se reemplaza el formulario por la confirmación: no hay doble envío.
@@ -65,7 +67,19 @@ function FormularioRegistro({
   }
 
   return (
-    <form action={accion} className="space-y-4">
+    <form
+      action={accion}
+      className="space-y-4"
+      onFocusCapture={() => {
+        // «Registro iniciado»: primera interacción con el formulario (no es un lead ni una cuenta).
+        if (iniciado.current) return;
+        iniciado.current = true;
+        track("registration_started", {
+          product_id: intencion.programa ?? "ninguno",
+          landing_variant: intencion.asesor ? "asesoria" : "venta",
+        });
+      }}
+    >
       {intencion.programa ? <input type="hidden" name="programa" value={intencion.programa} /> : null}
       {intencion.oferta ? <input type="hidden" name="oferta" value={intencion.oferta} /> : null}
       {intencion.asesor ? <input type="hidden" name="asesor" value="1" /> : null}

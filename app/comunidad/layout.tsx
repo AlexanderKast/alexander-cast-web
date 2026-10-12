@@ -41,17 +41,17 @@ export default async function ComunidadLayout({ children }: { children: ReactNod
           <nav aria-label="Principal" className="flex items-center gap-1">
             {miembro ? (
               <>
-                <Link href="/comunidad/programas" className={enlaceNav + " hidden sm:inline-flex"}>
+                <Link href="/comunidad/programas" className={enlaceNav + " max-sm:hidden"}>
                   Programas
                 </Link>
-                <Link href="/comunidad/mis-programas" className={enlaceNav + " hidden sm:inline-flex"}>
+                <Link href="/comunidad/mis-programas" className={enlaceNav + " max-sm:hidden"}>
                   Mis programas
                 </Link>
                 <Link href="/comunidad/mi-cuenta" className={enlaceNav}>
                   Mi cuenta
                 </Link>
                 {miembro.rol === "comercial" || miembro.rol === "admin" ? (
-                  <Link href="/comunidad/comercial" className={enlaceNav + " hidden md:inline-flex"}>
+                  <Link href="/comunidad/comercial" className={enlaceNav + " max-md:hidden"}>
                     Comercial
                   </Link>
                 ) : null}
@@ -68,7 +68,7 @@ export default async function ComunidadLayout({ children }: { children: ReactNod
               </>
             ) : (
               <>
-                <Link href="/comunidad/unete" className={enlaceNav + " hidden sm:inline-flex"}>
+                <Link href="/comunidad/unete" className={enlaceNav + " max-sm:hidden"}>
                   Programa
                 </Link>
                 <Link href="/comunidad/login" className={enlaceNav}>

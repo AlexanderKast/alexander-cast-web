@@ -97,3 +97,8 @@ pnpm-lock.yaml
 
 .vercel
 .env*.local
+
+# Masters y fotogramas de las landings (no se publican; ver docs/claude-landings/04-manifiesto-de-assets.md)
+docs/claude-landings/assets-fuente/render/
+docs/claude-landings/assets-fuente/magnific/*
+!docs/claude-landings/assets-fuente/magnific/kling_alpha.webm
