@@ -1,6 +1,6 @@
 /**
  * La oferta de Master IA 360 en un solo lugar (fuente: master-ia-360/00-contexto-y-estado-actual.md,
- * decisiones vigentes del 11 de oct de 2026). Cambiar precios, fechas, cupos o textos aquí cambia la
+ * decisiones vigentes del 11 de oct de 2026; el precio Regular se actualizó a $1.290.000 el 12 de oct por indicación de Alexander). Cambiar precios, fechas, cupos o textos aquí cambia la
  * página de compra, el cobro y la zona privada, sin tocar componentes. El cliente NUNCA manda el
  * monto: siempre sale de esta tabla.
  */
@@ -32,13 +32,13 @@ export const NIVELES: Record<Nivel, DefNivel> = {
     id: "preventa",
     nombre: "Preventa · precio de feria",
     pesos: 790_000,
-    nota: "Hasta el domingo 18 de octubre a medianoche. Ahorras $210.000.",
+    nota: "Hasta el domingo 18 de octubre a medianoche. Ahorras $500.000 frente al precio regular.",
     extras: ["Sesión grupal de arranque antes del 22 de octubre"],
   },
   regular: {
     id: "regular",
     nombre: "Regular",
-    pesos: 1_000_000,
+    pesos: 1_290_000,
     nota: "Desde el 19 de octubre. Inscripciones hasta el miércoles 21, 8 p. m.",
     extras: [],
   },

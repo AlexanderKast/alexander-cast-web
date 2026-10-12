@@ -31,7 +31,7 @@ describe("nivelesDisponibles", () => {
 describe("precios y bono", () => {
   it("montos en centavos de peso, fijos en el servidor", () => {
     expect(montoCentavos("preventa")).toBe(79_000_000);
-    expect(montoCentavos("regular")).toBe(100_000_000);
+    expect(montoCentavos("regular")).toBe(129_000_000);
     expect(montoCentavos("vip")).toBe(150_000_000);
   });
   it("la sesión de arranque es de preventa y VIP, no de regular", () => {
@@ -47,5 +47,6 @@ describe("precios y bono", () => {
   it("formatea pesos con punto de miles", () => {
     expect(formatoPesos(79_000_000)).toBe("$790.000");
     expect(formatoPesos(150_000_000)).toBe("$1.500.000");
+    expect(formatoPesos(129_000_000)).toBe("$1.290.000");
   });
 });
