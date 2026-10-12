@@ -16,6 +16,7 @@ import { CUPOS_TOTAL, CUPOS_VIP, incluyeSesionArranque, montoCentavos, NIVELES, 
 import { DESCRIPCION_PRODUCTO, MONEDA, NOMBRE_PRODUCTO } from "./precio";
 import { getStripe, simuladorActivo, stripeConfigurado } from "./stripe";
 import { baseUrl } from "./url";
+import { registrarEvento } from "./analitica";
 
 export class ConfigPagoError extends Error {}
 
@@ -104,24 +105,6 @@ export async function crearPedido(input: {
   return aPedido(data as unknown as Record<string, unknown>);
 }
 
-/**
- * Paso 1 del formulario: guarda el lead SIEMPRE como un pedido nuevo.
- * No se reutiliza un pedido existente por correo: quien solo conoce un correo
- * no puede tocar ni obtener el pedido de otra persona. El ID del pedido solo
- * lo conoce el navegador que lo creó (es un UUID aleatorio). Los duplicados
- * del mismo correo se agrupan al mostrarlos en el panel (ver idsUltimosPorCorreo).
- */
-export async function guardarLead(input: {
-  nombre: string;
-  email: string;
-  whatsapp?: string;
-  origen: "web" | "stand";
-  nivel: Nivel;
-  ip: string;
-}): Promise<Pedido> {
-  return crearPedido(input);
-}
-
 /** Del panel: por cada correo, solo el pedido sin pagar MÁS RECIENTE (los pagados y especiales se muestran todos). */
 export function sinDuplicadosPendientes(pedidos: Pedido[]): Pedido[] {
   const vistos = new Set<string>();
@@ -134,21 +117,30 @@ export function sinDuplicadosPendientes(pedidos: Pedido[]): Pedido[] {
   });
 }
 
-/** Paso 2: fija el nivel elegido (y con él el monto) mientras el pedido siga sin pagar. */
-export async function cambiarNivel(pedidoId: string, nivel: Nivel): Promise<Pedido | null> {
-  const { data } = await db()
-    .from("mia_pedidos")
-    .update({
-      nivel,
-      monto_centavos: montoCentavos(nivel),
-      bonus_incluido: incluyeSesionArranque(nivel),
-      estado: "pendiente",
-    })
-    .eq("id", pedidoId)
-    .in("estado", ["pendiente", "abandonado", "fallido"])
-    .select(COLS)
-    .maybeSingle();
-  return data ? aPedido(data as unknown as Record<string, unknown>) : null;
+export type ResultadoNivel = "ok" | "sin_cupo_total" | "sin_cupo_vip" | "pedido_no_editable";
+
+/**
+ * Paso 2: fija el nivel (y con él el monto) Y reserva el cupo en una sola
+ * operación atómica en la base (lock): dos compradores simultáneos no pueden
+ * quedarse con el último cupo. Solo funciona mientras el pedido siga sin pagar.
+ */
+export async function fijarNivel(pedidoId: string, nivel: Nivel): Promise<ResultadoNivel> {
+  const { data, error } = await db().rpc("mia_fijar_nivel", {
+    p_pedido: pedidoId,
+    p_nivel: nivel,
+    p_monto: montoCentavos(nivel),
+    p_bonus: incluyeSesionArranque(nivel),
+    p_total: CUPOS_TOTAL,
+    p_vip: CUPOS_VIP,
+  });
+  if (error) throw new Error(`No se pudo reservar el cupo: ${error.message}`);
+  const r = String(data);
+  return r === "ok" || r === "sin_cupo_total" || r === "sin_cupo_vip" ? r : "pedido_no_editable";
+}
+
+/** Libera la reserva si el checkout no se pudo crear (el cupo vuelve a estar disponible ya). */
+export async function liberarReserva(pedidoId: string): Promise<void> {
+  await db().from("mia_pedidos").update({ reservado_hasta: null }).eq("id", pedidoId).eq("estado", "pendiente");
 }
 
 export async function obtenerPedido(id: string): Promise<Pedido | null> {
@@ -181,24 +173,23 @@ export function idsRecuperables(pedidos: Pedido[], ahora: number = Date.now()): 
  */
 export async function cuposRestantes(excluirPedidoId?: string): Promise<{ total: number; vip: number }> {
   const admin = db();
-  const reservaDesde = new Date(Date.now() - 35 * 60_000).toISOString();
   const n = (r: { count: number | null }) => r.count ?? 0;
-  // Solo reservan cupo los checkouts ABIERTOS (ya tienen enlace de pago) y recientes;
-  // un lead del paso 1 todavía no reserva nada. El pedido que consulta no se cuenta contra sí mismo.
+  // Reservan cupo los pedidos que ya eligieron entrada y siguen dentro de su ventana de reserva
+  // (mia_fijar_nivel la fija de forma atómica). Un lead del paso 1 no reserva nada. El pedido
+  // que consulta no cuenta contra sí mismo.
   const reservas = () => {
     let q = admin
       .from("mia_pedidos")
       .select("id", { count: "exact", head: true })
       .eq("estado", "pendiente")
-      .not("checkout_url", "is", null)
-      .gte("updated_at", reservaDesde);
+      .gt("reservado_hasta", new Date().toISOString());
     if (excluirPedidoId) q = q.neq("id", excluirPedidoId);
     return q;
   };
 
   const [insc, inscVip, pag, pagVip, pend, pendVip] = await Promise.all([
-    admin.from("mia_inscripciones").select("id", { count: "exact", head: true }),
-    admin.from("mia_inscripciones").select("id", { count: "exact", head: true }).eq("entrada", "vip"),
+    admin.from("mia_inscripciones").select("id", { count: "exact", head: true }).eq("estado", "activa"),
+    admin.from("mia_inscripciones").select("id", { count: "exact", head: true }).eq("estado", "activa").eq("entrada", "vip"),
     admin.from("mia_pedidos").select("id", { count: "exact", head: true }).eq("estado", "pagado").is("aprovisionado_en", null),
     admin.from("mia_pedidos").select("id", { count: "exact", head: true }).eq("estado", "pagado").is("aprovisionado_en", null).eq("nivel", "vip"),
     reservas(),
@@ -251,8 +242,8 @@ export async function crearCheckout(pedido: Pedido): Promise<string> {
         metadata: { pedido_id: pedido.id },
         payment_intent_data: { metadata: { pedido_id: pedido.id }, description: NOMBRE_PRODUCTO },
         success_url: `${base}/comunidad/gracias?p=${pedido.id}`,
-        // Vuelve al paso 2 con los datos guardados.
-        cancel_url: `${base}/comunidad/unete?cancelado=1&p=${pedido.id}`,
+        // Vuelve a la compra; el pedido se retoma con la cookie firmada de este navegador, no con un id en la URL.
+        cancel_url: `${base}/comunidad/unete?cancelado=1#compra`,
         locale: "es",
         // Mínimo permitido por Stripe: 30 min. Pasado ese tiempo llega checkout.session.expired.
         expires_at: Math.floor(Date.now() / 1000) + 31 * 60,
@@ -328,6 +319,8 @@ export async function procesarPago(pago: PagoNormalizado): Promise<ResultadoPago
         .in("estado", ESTADOS_PAGABLES)
         .select("id");
       await aprovisionar(decision.pedidoId);
+      // Conversión deduplicada: solo cuando ESTE evento fue el que aplicó el pago (no en reintentos).
+      if (data?.length) await registrarEvento("purchase_confirmed", { nivel: pedido?.nivel ?? "desconocido" });
       return { resultado: data?.length ? "aplicado" : "ya_aplicado", pedidoId: decision.pedidoId };
     }
     case "duplicado":
@@ -447,7 +440,19 @@ async function marcarPorPaymentIntent(
     .update({ estado, motivo_revision: motivo })
     .eq("stripe_payment_intent", paymentIntent)
     .in("estado", ["pagado", "revision", "disputa"])
-    .select("id");
+    .select("id, user_id, cohorte_id");
+
+  // Política: un reembolso TOTAL o una disputa revocan el derecho de acceso pagado.
+  // (El reembolso parcial no cambia el acceso; una disputa ganada se restituye a mano.)
+  for (const p of data ?? []) {
+    if (p.user_id && p.cohorte_id) {
+      await db()
+        .from("mia_inscripciones")
+        .update({ estado: "revocada" })
+        .eq("user_id", p.user_id as string)
+        .eq("cohorte_id", p.cohorte_id as string);
+    }
+  }
   return { resultado: data?.length ? estado : "pedido_desconocido", pedidoId: data?.[0]?.id ?? null };
 }
 

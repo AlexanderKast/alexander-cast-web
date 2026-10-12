@@ -49,13 +49,13 @@ export const leadSchema = z.object({
     .string()
     .trim()
     .regex(/^\+?[\d\s-]{7,20}$/, "WhatsApp no válido"),
-  acepto: z.literal("on", { error: "Debes aceptar el tratamiento de datos para continuar." }),
+  nivel: z.enum(["preventa", "regular", "vip"]),
+  privacidad: z.literal("on", { error: "Debes aceptar el tratamiento de datos para continuar." }),
 });
 export type LeadInput = z.infer<typeof leadSchema>;
 
-/** Paso 2: el pedido que se guardó en el paso 1 y la entrada elegida. */
+/** Paso 2: solo la entrada elegida; el pedido se identifica por la cookie firmada, no por un id del cliente. */
 export const compraSchema = z.object({
-  pedido: z.uuid("Pedido no válido"),
   nivel: z.enum(["preventa", "regular", "vip"]),
 });
 export type CompraInput = z.infer<typeof compraSchema>;

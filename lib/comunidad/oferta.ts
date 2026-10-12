@@ -65,6 +65,18 @@ export const INCLUYE_TODOS = [
   "Plantilla de tu plan de 90 días",
 ];
 
+/**
+ * Lo que se promete llevarse (lo que ENTREGA Alexander: guía, plantilla, clase), no lo que depende de
+ * que cada alumno haga la tarea. Fuente: master-ia-360/00-contexto-y-estado-actual.md.
+ */
+export const LO_QUE_TE_LLEVAS = [
+  "La guía y la plantilla para publicar tu landing",
+  "La guía para conectar datos a tu prototipo",
+  "Una herramienta interna simple (cotizador o calculadora)",
+  "Tu primera tarea automatizada",
+  "La plantilla de tu plan de 90 días",
+];
+
 /** Se dice en la página de venta, no el día 1. */
 export const AVISO_CLAUDE = "Necesitas un plan de pago de Claude activo durante el programa. Ese costo no está incluido.";
 
