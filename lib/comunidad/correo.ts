@@ -51,12 +51,18 @@ export async function generarEnlaceAcceso(email: string): Promise<string | null>
   return `${baseUrl()}/comunidad/auth/confirmar?token_hash=${encodeURIComponent(hash)}`;
 }
 
-function cuerpoCorreo(nombre: string, enlace: string) {
-  const subject = "Tu acceso a Master IA 360";
+function cuerpoCorreo(nombre: string, enlace: string, compra = false) {
+  const subject = compra ? "Pago recibido: ya eres parte de Master IA 360" : "Tu acceso a Master IA 360";
+  const intro = compra
+    ? "Recibimos tu pago, ¡bienvenido a <strong>Master IA 360</strong>! Tu cuenta ya está lista. Sin contraseña: toca el botón y entras."
+    : "Este es tu acceso a la plataforma de <strong>Master IA 360</strong>. Sin contraseña: toca el botón y entras.";
+  const introTxt = compra
+    ? "Recibimos tu pago, bienvenido a Master IA 360. Tu cuenta ya está lista."
+    : "Tu acceso a Master IA 360:";
   const html = `
     <div style="font-family:Arial,sans-serif;color:#0A0A0A;max-width:520px;margin:0 auto;padding:24px;">
       <h1 style="font-size:22px;margin:0 0 16px;">Hola ${esc(nombre)},</h1>
-      <p style="font-size:16px;line-height:1.6;">Este es tu acceso a la plataforma de <strong>Master IA 360</strong>. Sin contraseña: toca el botón y entras.</p>
+      <p style="font-size:16px;line-height:1.6;">${intro}</p>
       <p style="margin:28px 0;">
         <a href="${esc(enlace)}" style="background:#D4AF37;color:#0A0A0A;padding:14px 24px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">Entrar a la plataforma</a>
       </p>
@@ -64,17 +70,21 @@ function cuerpoCorreo(nombre: string, enlace: string) {
       <p style="font-size:14px;line-height:1.6;color:#555;">Si no esperabas este correo, ignóralo.</p>
       <p style="font-size:16px;margin-top:24px;">Alexander Cast</p>
     </div>`;
-  const text = `Hola ${nombre},\n\nTu acceso a Master IA 360: ${enlace}\n\nFunciona una sola vez y vence en 1 hora.\n\nAlexander Cast`;
+  const text = `Hola ${nombre},\n\n${introTxt} ${enlace}\n\nFunciona una sola vez y vence en 1 hora.\n\nAlexander Cast`;
   return { subject, html, text };
 }
 
 export type ResultadoEnvio = { ok: true } | { ok: false; error: string };
 
-export async function enviarAcceso(email: string, nombre: string): Promise<ResultadoEnvio> {
+export async function enviarAcceso(
+  email: string,
+  nombre: string,
+  opts: { compra?: boolean } = {},
+): Promise<ResultadoEnvio> {
   try {
     const enlace = await generarEnlaceAcceso(email);
     if (!enlace) return { ok: false, error: "No se pudo generar el enlace." };
-    const { subject, html, text } = cuerpoCorreo(nombre, enlace);
+    const { subject, html, text } = cuerpoCorreo(nombre, enlace, opts.compra);
     const { error } = await resend().emails.send({ from: remitente(), to: email, subject, html, text });
     return error ? { ok: false, error: error.message } : { ok: true };
   } catch (e) {

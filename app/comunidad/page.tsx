@@ -3,6 +3,7 @@ import { requireMiembroConPrivacidad } from "@/lib/comunidad/auth";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { ENTRADA_LABEL } from "@/lib/comunidad/validators";
 import { botonCls } from "@/components/comunidad/ui";
+import { CLASE_PRIVADA } from "@/lib/comunidad/oferta";
 
 export default async function ComunidadHome() {
   const m = await requireMiembroConPrivacidad();
@@ -34,6 +35,19 @@ export default async function ComunidadHome() {
           crecer junto a otros emprendedores.
         </p>
       </section>
+
+      {m.inscripcion?.bonusClasePrivada ? (
+        <section className="mia-card-dark flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="mia-eyebrow">Bono exclusivo</p>
+            <h2 className="mt-2 text-xl font-bold">{CLASE_PRIVADA.titulo}</h2>
+            <p className="mia-muted mt-1 text-sm">Solo para quienes se inscribieron antes del cierre.</p>
+          </div>
+          <Link href="/comunidad/bono" className={botonCls + " shrink-0"}>
+            Ver la clase privada
+          </Link>
+        </section>
+      ) : null}
 
       {m.inscripcion ? (
         <section>

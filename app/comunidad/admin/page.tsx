@@ -24,6 +24,9 @@ export default async function AdminComunidadPage() {
           <Link href="/comunidad/admin/nuevo" className={botonCls}>
             + Alta rápida
           </Link>
+          <Link href="/comunidad/admin/pagos" className={botonSecundarioCls}>
+            Pagos y leads
+          </Link>
           <Link href="/comunidad/admin/importar" className={botonSecundarioCls}>
             Importar CSV
           </Link>

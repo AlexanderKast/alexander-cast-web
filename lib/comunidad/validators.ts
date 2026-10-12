@@ -40,3 +40,15 @@ export const fichaSchema = z.object({
   quiere: texto(3, 1000),
 });
 export type FichaInput = z.infer<typeof fichaSchema>;
+
+/** Compra pública: WhatsApp obligatorio (se usa para acompañar y recuperar compras a medias). */
+export const compraSchema = z.object({
+  nombre: texto(2, 120),
+  email: correoSchema,
+  whatsapp: z
+    .string()
+    .trim()
+    .regex(/^\+?[\d\s-]{7,20}$/, "WhatsApp no válido"),
+  acepto: z.literal("on", { error: "Debes aceptar el tratamiento de datos para continuar." }),
+});
+export type CompraInput = z.infer<typeof compraSchema>;

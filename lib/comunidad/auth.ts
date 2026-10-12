@@ -9,6 +9,7 @@ export interface InscripcionActual {
   id: string;
   entrada: Entrada;
   comunidadVenceEn: string | null;
+  bonusClasePrivada: boolean;
   cohorte: { id: string; nombre: string; clase1En: string | null };
 }
 
@@ -81,7 +82,7 @@ export const getMiembro = cache(async (): Promise<Miembro | null> => {
 
   const { data: insc } = await supabase
     .from("mia_inscripciones")
-    .select("id, entrada, comunidad_vence_en, cohorte:mia_cohortes(id, nombre, clase1_en)")
+    .select("id, entrada, comunidad_vence_en, bonus_clase_privada, cohorte:mia_cohortes(id, nombre, clase1_en)")
     .eq("user_id", user.id)
     .order("created_at", { ascending: true })
     .limit(1)
@@ -98,6 +99,7 @@ export const getMiembro = cache(async (): Promise<Miembro | null> => {
         id: insc.id as string,
         entrada: insc.entrada as Entrada,
         comunidadVenceEn: (insc.comunidad_vence_en as string | null) ?? null,
+        bonusClasePrivada: insc.bonus_clase_privada === true,
         cohorte: { id: c.id, nombre: c.nombre, clase1En: c.clase1_en },
       };
     }
