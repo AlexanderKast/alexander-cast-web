@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireAdminComunidad } from "@/lib/comunidad/auth";
-import { idsRecuperables, listarPedidos, type Pedido } from "@/lib/comunidad/pedidos";
+import { idsRecuperables, listarPedidos, sinDuplicadosPendientes, type Pedido } from "@/lib/comunidad/pedidos";
 import { formatoPesos } from "@/lib/comunidad/precio";
 import { NIVELES } from "@/lib/comunidad/oferta";
 import { enlaceWhatsapp } from "@/lib/comunidad/whatsapp";
@@ -22,7 +22,7 @@ const ETIQUETA: Record<Pedido["estado"], string> = {
 
 export default async function PagosPage() {
   await requireAdminComunidad();
-  const pedidos = await listarPedidos();
+  const pedidos = sinDuplicadosPendientes(await listarPedidos());
   const recuperablesIds = idsRecuperables(pedidos);
   const pagados = pedidos.filter((p) => p.estado === "pagado");
   const recuperables = pedidos.filter((p) => recuperablesIds.has(p.id));

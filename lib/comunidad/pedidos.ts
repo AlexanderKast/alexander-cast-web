@@ -105,9 +105,11 @@ export async function crearPedido(input: {
 }
 
 /**
- * Paso 1 del formulario: guarda (o reutiliza) el lead. Si la misma persona ya
- * empezó en las últimas 24 h sin pagar, se actualiza ese pedido en vez de
- * crear otro: la lista de leads no se llena de duplicados.
+ * Paso 1 del formulario: guarda el lead SIEMPRE como un pedido nuevo.
+ * No se reutiliza un pedido existente por correo: quien solo conoce un correo
+ * no puede tocar ni obtener el pedido de otra persona. El ID del pedido solo
+ * lo conoce el navegador que lo creó (es un UUID aleatorio). Los duplicados
+ * del mismo correo se agrupan al mostrarlos en el panel (ver idsUltimosPorCorreo).
  */
 export async function guardarLead(input: {
   nombre: string;
@@ -117,33 +119,19 @@ export async function guardarLead(input: {
   nivel: Nivel;
   ip: string;
 }): Promise<Pedido> {
-  const desde = new Date(Date.now() - 24 * 3600_000).toISOString();
-  const { data: previo } = await db()
-    .from("mia_pedidos")
-    .select("id")
-    .eq("email", input.email)
-    .in("estado", ["pendiente", "abandonado", "fallido"])
-    .gte("created_at", desde)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (previo) {
-    const { data } = await db()
-      .from("mia_pedidos")
-      .update({
-        nombre: input.nombre,
-        whatsapp: input.whatsapp ?? null,
-        estado: "pendiente",
-        privacidad_aceptada_en: new Date().toISOString(),
-        privacidad_ip: input.ip,
-      })
-      .eq("id", previo.id as string)
-      .select(COLS)
-      .single();
-    if (data) return aPedido(data as unknown as Record<string, unknown>);
-  }
   return crearPedido(input);
+}
+
+/** Del panel: por cada correo, solo el pedido sin pagar MÁS RECIENTE (los pagados y especiales se muestran todos). */
+export function sinDuplicadosPendientes(pedidos: Pedido[]): Pedido[] {
+  const vistos = new Set<string>();
+  return pedidos.filter((p) => {
+    if (p.estado !== "pendiente" && p.estado !== "abandonado" && p.estado !== "fallido") return true;
+    const clave = p.email.toLowerCase();
+    if (vistos.has(clave)) return false;
+    vistos.add(clave); // la lista llega de más nuevo a más viejo
+    return true;
+  });
 }
 
 /** Paso 2: fija el nivel elegido (y con él el monto) mientras el pedido siga sin pagar. */
