@@ -42,6 +42,12 @@ interface FilaPerfil {
 
 /** Miembro de la comunidad con sesión, o null. Un usuario de auth sin perfil NO es miembro. */
 export const getMiembro = cache(async (): Promise<Miembro | null> => {
+  // Sin configuración de Supabase (clon nuevo, preview sin variables) las
+  // páginas públicas siguen renderizando en vez de caerse con un 500.
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    console.error("[comunidad] Faltan NEXT_PUBLIC_SUPABASE_URL o NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+    return null;
+  }
   const supabase = await createSupabaseServer();
   const {
     data: { user },
