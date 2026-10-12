@@ -4,7 +4,6 @@ import { FormCompra, type OpcionNivel } from "@/components/comunidad/FormCompra"
 import { Countdown } from "@/components/comunidad/Countdown";
 import {
   AVISO_CLAUDE,
-  CUPOS_TOTAL,
   FIN_PREVENTA,
   INCLUYE_TODOS,
   NIVELES,
@@ -68,7 +67,7 @@ export default async function UnetePage({
         </p>
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <span className="mia-chip mia-chip-ok">Empieza el 22 de octubre</span>
-          <span className="mia-chip">{CUPOS_TOTAL} cupos</span>
+          <span className="mia-chip">Cupos limitados</span>
           <span className="mia-chip">8 clases en vivo</span>
         </div>
       </header>

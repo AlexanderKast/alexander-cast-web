@@ -66,7 +66,7 @@ export async function iniciarCompra(_p: EstadoForm, fd: FormData): Promise<Estad
       message:
         d.nivel === "vip" && cupos.total > 0
           ? "Los cupos VIP se agotaron. Puedes elegir el otro nivel o escribirnos por WhatsApp."
-          : "Los 200 cupos de esta cohorte se agotaron. Escríbenos por WhatsApp y te dejamos en la lista de espera.",
+          : "Los cupos de esta cohorte se agotaron. Escríbenos por WhatsApp y te dejamos en la lista de espera.",
     };
   }
 
