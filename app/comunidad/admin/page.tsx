@@ -15,10 +15,10 @@ export default async function AdminComunidadPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="font-display text-3xl font-semibold">Alumnos</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Master IA 360 · Fase 0</p>
+          <p className="mia-eyebrow">Admin · Master IA 360</p>
+          <h1 className="mia-title mt-3">Alumnos</h1>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href="/comunidad/admin/nuevo" className={botonCls}>
@@ -39,57 +39,57 @@ export default async function AdminComunidadPage() {
           ["Ya entraron", entraron],
           ["Con ficha", conFicha],
         ].map(([k, v]) => (
-          <div key={k} className="rounded-2xl border border-line-strong bg-surface-1 p-4">
-            <dt className="text-xs uppercase tracking-wider text-muted-foreground">{k}</dt>
-            <dd className="mt-1 text-2xl font-semibold">{v}</dd>
+          <div key={k} className="mia-card-soft !p-4 sm:!p-5">
+            <dt className="mia-stat-label">{k}</dt>
+            <dd className="mia-stat-value">{v}</dd>
           </div>
         ))}
       </dl>
 
       <BotonEnviarPendientes />
 
-      <div className="overflow-x-auto rounded-2xl border border-line-strong">
-        <table className="w-full min-w-[720px] text-left text-sm">
-          <thead className="bg-surface-2 text-xs uppercase tracking-wider text-muted-foreground">
+      <div className="mia-table-wrap">
+        <table className="mia-table">
+          <thead>
             <tr>
-              <th className="px-4 py-3">Alumno</th>
-              <th className="px-4 py-3">Entrada</th>
-              <th className="px-4 py-3">Cohorte</th>
-              <th className="px-4 py-3">Entró</th>
-              <th className="px-4 py-3">Ficha</th>
-              <th className="px-4 py-3" />
+              <th>Alumno</th>
+              <th>Entrada</th>
+              <th>Cohorte</th>
+              <th>Entró</th>
+              <th>Ficha</th>
+              <th />
             </tr>
           </thead>
-          <tbody className="divide-y divide-line">
+          <tbody>
             {alumnos.map((a) => (
-              <tr key={a.userId} className="align-top">
-                <td className="px-4 py-3">
+              <tr key={a.userId}>
+                <td>
                   <p className="font-medium">{a.nombre}</p>
-                  <p className="text-xs text-muted-foreground">{a.email}</p>
-                  {a.whatsapp ? <p className="text-xs text-muted-foreground">{a.whatsapp}</p> : null}
+                  <p className="mia-muted text-xs">{a.email}</p>
+                  {a.whatsapp ? <p className="mia-muted text-xs">{a.whatsapp}</p> : null}
                 </td>
-                <td className="px-4 py-3">{a.entrada ? ENTRADA_LABEL[a.entrada] : "—"}</td>
-                <td className="px-4 py-3">{a.cohorte ?? "—"}</td>
-                <td className="px-4 py-3">{a.privacidad ? "Sí" : "No"}</td>
-                <td className="px-4 py-3">
+                <td>{a.entrada ? ENTRADA_LABEL[a.entrada] : "—"}</td>
+                <td>{a.cohorte ?? "—"}</td>
+                <td>{a.privacidad ? "Sí" : "No"}</td>
+                <td>
                   {a.entrada ? (
                     a.fichaCompleta ? (
-                      <span className="text-gold">Llenada</span>
+                      <span className="mia-chip mia-chip-ok">Llenada</span>
                     ) : (
-                      <span className="text-muted-foreground">Pendiente</span>
+                      <span className="mia-chip">Pendiente</span>
                     )
                   ) : (
                     "—"
                   )}
                 </td>
-                <td className="px-4 py-3 text-right">
+                <td className="text-right">
                   <BotonReenviar userId={a.userId} />
                 </td>
               </tr>
             ))}
             {alumnos.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-muted-foreground">
+                <td colSpan={6} className="mia-muted py-10 text-center">
                   Aún no hay alumnos. Empieza con una alta rápida.
                 </td>
               </tr>

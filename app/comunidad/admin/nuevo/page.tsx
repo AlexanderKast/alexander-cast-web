@@ -9,18 +9,19 @@ export default async function NuevoAlumnoPage() {
 
   return (
     <div className="mx-auto max-w-md">
-      <Link href="/comunidad/admin" className="text-sm text-muted-foreground hover:text-foreground">
+      <Link href="/comunidad/admin" className="mia-back">
         ← Alumnos
       </Link>
-      <h1 className="mt-4 font-display text-3xl font-semibold">Alta rápida</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
+      <p className="mia-eyebrow mt-6">Stand · Feria Effix</p>
+      <h1 className="mia-title mt-3">Alta rápida</h1>
+      <p className="mia-lead mt-3">
         Un alumno por vez. Al guardar, el formulario queda listo para el siguiente.
       </p>
-      <div className="mt-6">
+      <div className="mia-card mt-8">
         {cohortes.length ? (
           <FormAlumno cohortes={cohortes.map((c) => ({ id: c.id, nombre: c.nombre }))} />
         ) : (
-          <p className="text-destructive">No hay cohortes activas. Crea una primero.</p>
+          <p className="mia-error">No hay cohortes activas. Crea una primero.</p>
         )}
       </div>
     </div>

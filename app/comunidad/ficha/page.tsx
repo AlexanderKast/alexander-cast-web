@@ -7,7 +7,7 @@ export default async function FichaPage() {
   const m = await requireMiembroConPrivacidad();
 
   if (!m.inscripcion) {
-    return <p className="text-muted-foreground">Aún no tienes una inscripción activa.</p>;
+    return <p className="mia-muted">Aún no tienes una inscripción activa.</p>;
   }
 
   // RLS: solo devuelve la ficha propia.
@@ -23,14 +23,16 @@ export default async function FichaPage() {
 
   return (
     <div className="mx-auto max-w-xl">
-      <Link href="/comunidad" className="text-sm text-muted-foreground hover:text-foreground">
+      <Link href="/comunidad" className="mia-back">
         ← Volver
       </Link>
-      <h1 className="mt-4 font-display text-3xl font-semibold">Ficha de tu negocio</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        Respuestas cortas y concretas. Puedes editarla hasta que empiece la clase 1.
+      <p className="mia-eyebrow mt-6">Entregable 1</p>
+      <h1 className="mia-title mt-3">Ficha de tu negocio</h1>
+      <p className="mia-lead mt-3">
+        Respuestas cortas y concretas: con esto diseñamos las clases para que te sirvan a ti. Puedes
+        editarla hasta que empiece la clase 1.
       </p>
-      <div className="mt-6">
+      <div className="mia-card mt-8">
         <FormFicha inicial={ficha} bloqueada={bloqueada} />
       </div>
     </div>

@@ -9,7 +9,7 @@ interface Props {
   bloqueada: boolean;
 }
 
-const areaCls = inputCls + " min-h-32 resize-y";
+const areaCls = inputCls;
 
 export function FormFicha({ inicial, bloqueada }: Props) {
   const [estado, accion, pendiente] = useActionState(guardarFicha, INICIAL);
@@ -51,11 +51,11 @@ export function FormFicha({ inicial, bloqueada }: Props) {
       </fieldset>
 
       {bloqueada ? (
-        <p className="rounded-xl border border-line-strong px-4 py-3 text-sm text-muted-foreground">
+        <p className="mia-alert">
           La clase 1 ya empezó: la ficha quedó cerrada y ya no se puede editar.
         </p>
       ) : (
-        <button type="submit" disabled={pendiente} className={botonCls + " w-full sm:w-auto"}>
+        <button type="submit" disabled={pendiente} className={botonCls}>
           {pendiente ? "Guardando…" : inicial ? "Actualizar ficha" : "Guardar ficha"}
         </button>
       )}

@@ -49,7 +49,7 @@ export function FormAlumno({ cohortes }: Props) {
       </Campo>
 
       <fieldset>
-        <legend className="mb-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        <legend className="mia-label">
           Entrada
         </legend>
         <div className="grid grid-cols-3 gap-2">
@@ -60,15 +60,15 @@ export function FormAlumno({ cohortes }: Props) {
                 name="entrada"
                 value={e}
                 defaultChecked={i === 0}
-                className="peer sr-only"
+                className="sr-only"
               />
-              <span className="flex min-h-12 items-center justify-center rounded-xl border border-line-strong text-sm font-medium text-muted-foreground peer-checked:border-gold peer-checked:bg-gold/15 peer-checked:text-foreground peer-focus-visible:ring-2 peer-focus-visible:ring-gold/40">
+              <span className="mia-choice">
                 {ENTRADA_LABEL[e]}
               </span>
             </label>
           ))}
         </div>
-        {errores.entrada ? <p className="mt-1 text-sm text-destructive">{errores.entrada}</p> : null}
+        {errores.entrada ? <p className="mia-error">{errores.entrada}</p> : null}
       </fieldset>
 
       {cohortes.length > 1 ? (
@@ -86,11 +86,11 @@ export function FormAlumno({ cohortes }: Props) {
       )}
 
       <label className="flex min-h-11 items-center gap-3 text-sm">
-        <input type="checkbox" name="enviar" defaultChecked className="size-5 accent-[color:var(--gold)]" />
+        <input type="checkbox" name="enviar" defaultChecked className="size-5 accent-[#65a30d]" />
         Enviar el acceso por correo ahora
       </label>
 
-      <button type="submit" disabled={pendiente} className={botonCls + " w-full"}>
+      <button type="submit" disabled={pendiente} className={botonCls + " mia-btn-block"}>
         {pendiente ? "Guardando…" : "Dar de alta"}
       </button>
       <Aviso estado={estado} />

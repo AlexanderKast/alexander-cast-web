@@ -18,38 +18,60 @@ export default async function ComunidadHome() {
     tieneFicha = data !== null;
   }
 
+  const primerNombre = m.nombre.split(" ")[0];
+
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="font-display text-3xl font-semibold sm:text-4xl">
-          Hola, {m.nombre.split(" ")[0]}
-        </h1>
-        {m.inscripcion ? (
-          <p className="mt-2 text-muted-foreground">
-            {m.inscripcion.cohorte.nombre} · Entrada {ENTRADA_LABEL[m.inscripcion.entrada]}
-          </p>
-        ) : (
-          <p className="mt-2 text-muted-foreground">Aún no tienes una cohorte asignada.</p>
-        )}
-      </div>
+    <div className="space-y-10">
+      <section className="mia-card-dark relative overflow-hidden">
+        <p className="mia-eyebrow">
+          {m.inscripcion
+            ? `${m.inscripcion.cohorte.nombre} · Entrada ${ENTRADA_LABEL[m.inscripcion.entrada]}`
+            : "Master IA 360"}
+        </p>
+        <h1 className="mia-title mt-4">Hola, {primerNombre}</h1>
+        <p className="mia-lead mt-4">
+          Este es tu espacio para aprender IA aplicada a tu negocio, avanzar con tus entregables y
+          crecer junto a otros emprendedores.
+        </p>
+      </section>
 
       {m.inscripcion ? (
-        <section className="rounded-2xl border border-line-strong bg-surface-1 p-5 sm:p-6">
-          <h2 className="text-lg font-semibold">Ficha de tu negocio</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {tieneFicha
-              ? "Tu ficha está guardada. Puedes editarla hasta que empiece la clase 1."
-              : "Cuéntanos qué vendes, a quién y qué te gustaría tener. Es lo primero que necesitamos de ti."}
-          </p>
-          <Link href="/comunidad/ficha" className={botonCls + " mt-4"}>
-            {tieneFicha ? "Ver o editar mi ficha" : "Llenar mi ficha"}
-          </Link>
-        </section>
-      ) : null}
+        <section>
+          <p className="mia-eyebrow">Tu ruta</p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+            <article className="mia-card flex flex-col">
+              <span className="mia-chip w-fit">{tieneFicha ? "Hecho" : "Paso 1"}</span>
+              <h2 className="mt-4 text-lg font-semibold">Ficha de tu negocio</h2>
+              <p className="mia-muted mt-2 flex-1 text-sm leading-relaxed">
+                {tieneFicha
+                  ? "Está guardada. Puedes ajustarla hasta que empiece la clase 1."
+                  : "Cuéntanos qué vendes, a quién y qué te gustaría tener."}
+              </p>
+              <Link href="/comunidad/ficha" className={botonCls + " mia-btn-sm mt-5"}>
+                {tieneFicha ? "Ver o editar" : "Llenar mi ficha"}
+              </Link>
+            </article>
 
-      <p className="text-sm text-muted-foreground">
-        Las clases, los recursos y la comunidad llegan en las próximas semanas, aquí mismo.
-      </p>
+            <article className="mia-card-soft flex flex-col">
+              <span className="mia-chip w-fit">Pronto</span>
+              <h2 className="mt-4 text-lg font-semibold">Clases</h2>
+              <p className="mia-muted mt-2 text-sm leading-relaxed">
+                8 clases en vivo, con grabación, materiales descargables y tareas.
+              </p>
+            </article>
+
+            <article className="mia-card-soft flex flex-col">
+              <span className="mia-chip w-fit">Pronto</span>
+              <h2 className="mt-4 text-lg font-semibold">Comunidad</h2>
+              <p className="mia-muted mt-2 text-sm leading-relaxed">
+                Preguntas, avances y recursos para compartir con tu cohorte.
+              </p>
+            </article>
+          </div>
+        </section>
+      ) : (
+        <p className="mia-muted">Aún no tienes una cohorte asignada.</p>
+      )}
     </div>
   );
 }

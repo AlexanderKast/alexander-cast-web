@@ -11,17 +11,20 @@ export default async function LoginComunidadPage({
   const { error } = await searchParams;
 
   return (
-    <div className="mx-auto max-w-sm py-10">
-      <h1 className="font-display text-3xl font-semibold">Entra a tu comunidad</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        Sin contraseña. Escribe el correo con el que te inscribiste y te enviamos un enlace de acceso.
+    <div className="relative isolate mx-auto max-w-md py-6 sm:py-12">
+      <div aria-hidden="true" className="mia-dots pointer-events-none absolute inset-x-0 -top-10 -z-10 h-64" />
+      <p className="mia-eyebrow">Master IA 360 · Comunidad</p>
+      <h1 className="mia-title mt-4">Entra a tu comunidad</h1>
+      <p className="mia-lead mt-4">
+        Aprende, avanza y comparte con otros emprendedores. Sin contraseña: escribe el correo con el
+        que te inscribiste y te enviamos un enlace de acceso.
       </p>
       {error ? (
-        <p role="alert" className="mt-5 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <p role="alert" className="mia-alert mia-alert-error mt-6">
           Ese enlace ya se usó o venció. Pide uno nuevo aquí abajo.
         </p>
       ) : null}
-      <div className="mt-6">
+      <div className="mia-card mt-8">
         <FormAcceso />
       </div>
     </div>

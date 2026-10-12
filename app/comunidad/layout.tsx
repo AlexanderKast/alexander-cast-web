@@ -1,10 +1,20 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { getMiembro } from "@/lib/comunidad/auth";
+import { BrandMark } from "@/components/comunidad/BrandMark";
+import { botonSecundarioCls } from "@/components/comunidad/ui";
+import "./comunidad.css";
 
 /** Depende de la sesión en cada pedido: nunca se cachea. */
 export const dynamic = "force-dynamic";
+
+export const viewport: Viewport = {
+  themeColor: "#fafbf7",
+  colorScheme: "light",
+  width: "device-width",
+  initialScale: 1,
+};
 
 export const metadata: Metadata = {
   title: "Master IA 360 · Comunidad",
@@ -15,27 +25,19 @@ export default async function ComunidadLayout({ children }: { children: ReactNod
   const miembro = await getMiembro();
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="border-b border-line px-4 py-3 sm:px-6">
+    <div data-theme="mia" className="mia-page">
+      <header className="mia-header px-4 py-3 sm:px-6">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
-          <Link href="/comunidad" className="flex items-center gap-2">
-            <span className="text-sm font-semibold">Master IA 360</span>
-            <span className="rounded-full border border-line-strong px-2 py-0.5 text-[10px] uppercase tracking-widest text-muted-foreground">
-              Comunidad
-            </span>
-          </Link>
+          <BrandMark />
           {miembro ? (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               {miembro.rol === "admin" ? (
-                <Link href="/comunidad/admin" className="text-sm text-gold hover:underline">
+                <Link href="/comunidad/admin" className={botonSecundarioCls}>
                   Admin
                 </Link>
               ) : null}
               <form action="/comunidad/salir" method="post">
-                <button
-                  type="submit"
-                  className="min-h-11 px-2 text-sm text-muted-foreground hover:text-foreground"
-                >
+                <button type="submit" className="mia-back min-h-11 px-3">
                   Salir
                 </button>
               </form>
@@ -43,7 +45,7 @@ export default async function ComunidadLayout({ children }: { children: ReactNod
           ) : null}
         </div>
       </header>
-      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">{children}</main>
+      <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">{children}</main>
     </div>
   );
 }

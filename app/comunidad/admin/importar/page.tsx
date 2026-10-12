@@ -12,20 +12,18 @@ export default async function ImportarPage() {
 
   return (
     <div className="mx-auto max-w-xl">
-      <Link href="/comunidad/admin" className="text-sm text-muted-foreground hover:text-foreground">
+      <Link href="/comunidad/admin" className="mia-back">
         ← Alumnos
       </Link>
-      <h1 className="mt-4 font-display text-3xl font-semibold">Importar alumnos</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        Sube un CSV (coma o punto y coma) con las columnas{" "}
-        <code className="rounded bg-surface-2 px-1">nombre</code>,{" "}
-        <code className="rounded bg-surface-2 px-1">correo</code>,{" "}
-        <code className="rounded bg-surface-2 px-1">entrada</code> (Regular, Preventa o VIP) y,
-        opcionales, <code className="rounded bg-surface-2 px-1">whatsapp</code> y{" "}
-        <code className="rounded bg-surface-2 px-1">cohorte</code>. Máximo 500 filas. Importar no
-        envía correos: usa «Enviar acceso a pendientes» en la lista.
+      <p className="mia-eyebrow mt-6">Lote</p>
+      <h1 className="mia-title mt-3">Importar alumnos</h1>
+      <p className="mia-lead mt-3">
+        Sube un CSV (coma o punto y coma) con las columnas <strong>nombre</strong>,{" "}
+        <strong>correo</strong> y <strong>entrada</strong> (Regular, Preventa o VIP); opcionales:{" "}
+        <strong>whatsapp</strong> y <strong>cohorte</strong>. Máximo 500 filas. Importar no envía
+        correos: usa «Enviar acceso a pendientes» en la lista.
       </p>
-      <div className="mt-6">
+      <div className="mia-card mt-8">
         <FormImportar cohortes={cohortes.map((c) => ({ id: c.id, nombre: c.nombre }))} />
       </div>
     </div>

@@ -1,0 +1,411 @@
+/*
+ * Comunidad Master IA 360 — tema claro de IA Master Tech.
+ *
+ * Fuente única de tokens del módulo. Mantiene la identidad de IA Master Tech
+ * (Space Grotesk / Inter / JetBrains Mono, acento lima, botones en píldora,
+ * radios 12/16/24, glifo de circuito) pero en versión clara, minimalista y
+ * educativa. Todo va bajo [data-theme="mia"], así que no toca el sitio
+ * público (imt.css), el admin ni el portal.
+ *
+ * Contraste: el lima #A3E635 solo se usa como relleno con texto oscuro.
+ * Para texto de acento sobre fondo claro se usa --mia-accent-ink.
+ */
+
+[data-theme="mia"] {
+  --mia-bg: #fafbf7;
+  --mia-elev: #ffffff;
+  --mia-surface: #f3f6ec;
+  --mia-border: rgba(5, 7, 5, 0.1);
+  --mia-border-strong: rgba(5, 7, 5, 0.22);
+
+  --mia-ink: #050705;
+  --mia-muted: #55604c; /* 6.3:1 sobre --mia-bg: apto para texto */
+  --mia-dim: #7c8672; /* solo decorativo / texto grande */
+
+  --mia-accent: #a3e635; /* relleno */
+  --mia-accent-hover: #bef264;
+  --mia-accent-strong: #22c55e;
+  --mia-accent-ink: #3f6212; /* texto de acento sobre claro, 7:1 */
+  --mia-accent-soft: #ecfccb; /* fondo de chips y avisos */
+
+  --mia-dark: #050705; /* bloques de contraste: misma paleta del sitio */
+  --mia-dark-text: #f7fee7;
+  --mia-dark-muted: #a8b39f;
+
+  --mia-danger: #b91c1c;
+  --mia-danger-soft: #fef2f2;
+
+  --mia-radius-sm: 12px;
+  --mia-radius: 16px;
+  --mia-radius-lg: 24px;
+  --mia-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --mia-font-display: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --mia-font-body: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --mia-font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+
+  color-scheme: light;
+  color: var(--mia-ink);
+  font-family: var(--mia-font-body);
+}
+
+html:has([data-theme="mia"]),
+body:has([data-theme="mia"]) {
+  background: #fafbf7;
+}
+
+[data-theme="mia"].mia-page {
+  min-height: 100vh;
+  background-color: var(--mia-bg);
+  overflow-x: clip;
+}
+
+[data-theme="mia"] :is(h1, h2, h3, h4) {
+  font-family: var(--mia-font-display);
+  color: var(--mia-ink);
+  letter-spacing: -0.025em;
+}
+
+[data-theme="mia"] ::selection {
+  background: var(--mia-accent);
+  color: var(--mia-ink);
+}
+
+[data-theme="mia"] :focus-visible {
+  outline: 2px solid var(--mia-accent-ink);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* ── Cabecera ─────────────────────────────────────────── */
+.mia-header {
+  border-bottom: 1px solid var(--mia-border);
+  background: rgba(250, 251, 247, 0.9);
+  backdrop-filter: blur(10px);
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+.mia-brand-name {
+  font-family: var(--mia-font-display);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.mia-brand-sub {
+  margin-top: 4px;
+  font-family: var(--mia-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--mia-muted);
+}
+
+/* ── Tipografía ───────────────────────────────────────── */
+.mia-eyebrow {
+  font-family: var(--mia-font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--mia-accent-ink);
+}
+.mia-title {
+  font-family: var(--mia-font-display);
+  font-weight: 700;
+  font-size: clamp(2rem, 6vw, 3rem);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+.mia-lead {
+  color: var(--mia-muted);
+  font-size: 16px;
+  line-height: 1.6;
+  max-width: 56ch;
+}
+.mia-muted {
+  color: var(--mia-muted);
+}
+.mia-link {
+  color: var(--mia-accent-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.mia-back {
+  font-size: 14px;
+  color: var(--mia-muted);
+}
+.mia-back:hover {
+  color: var(--mia-ink);
+}
+
+/* ── Botones (misma forma que imt-btn: píldora, 48px) ─── */
+.mia-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 48px;
+  padding: 0 1.5rem;
+  border-radius: 999px;
+  font-family: var(--mia-font-body);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition:
+    background-color 180ms ease-out,
+    border-color 180ms ease-out,
+    box-shadow 320ms var(--mia-ease),
+    scale 160ms var(--mia-ease);
+}
+.mia-btn:active {
+  scale: 0.97;
+}
+.mia-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  scale: 1;
+}
+.mia-btn-primary {
+  background-color: var(--mia-accent);
+  color: var(--mia-ink);
+  box-shadow: 0 8px 24px -12px rgba(101, 163, 13, 0.65);
+}
+.mia-btn-primary:hover:not(:disabled) {
+  background-color: var(--mia-accent-hover);
+  box-shadow: 0 12px 32px -12px rgba(101, 163, 13, 0.8);
+}
+.mia-btn-secondary {
+  background-color: var(--mia-elev);
+  color: var(--mia-ink);
+  border-color: var(--mia-border-strong);
+}
+.mia-btn-secondary:hover:not(:disabled) {
+  border-color: var(--mia-ink);
+}
+.mia-btn-sm {
+  min-height: 40px;
+  padding: 0 1.1rem;
+  font-size: 14px;
+}
+.mia-btn-block {
+  width: 100%;
+}
+
+/* ── Tarjetas ─────────────────────────────────────────── */
+.mia-card {
+  background-color: var(--mia-elev);
+  border: 1px solid var(--mia-border);
+  border-radius: var(--mia-radius-lg);
+  padding: 1.5rem;
+}
+@media (min-width: 640px) {
+  .mia-card {
+    padding: 2rem;
+  }
+}
+.mia-card-soft {
+  background-color: var(--mia-surface);
+  border: 1px solid var(--mia-border);
+  border-radius: var(--mia-radius-lg);
+  padding: 1.5rem;
+}
+/* Bloque oscuro: el guiño visual al sitio de IA Master Tech. */
+.mia-card-dark {
+  background-color: var(--mia-dark);
+  color: var(--mia-dark-text);
+  border-radius: var(--mia-radius-lg);
+  padding: 1.5rem;
+}
+@media (min-width: 640px) {
+  .mia-card-dark {
+    padding: 2rem;
+  }
+}
+.mia-card-dark :is(h1, h2, h3) {
+  color: var(--mia-dark-text);
+}
+.mia-card-dark .mia-eyebrow {
+  color: var(--mia-accent);
+}
+.mia-card-dark .mia-lead,
+.mia-card-dark .mia-muted {
+  color: var(--mia-dark-muted);
+}
+
+/* ── Formularios ──────────────────────────────────────── */
+.mia-label {
+  display: block;
+  margin-bottom: 6px;
+  font-family: var(--mia-font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--mia-muted);
+}
+.mia-input {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 16px;
+  border-radius: var(--mia-radius-sm);
+  border: 1px solid var(--mia-border-strong);
+  background: var(--mia-elev);
+  color: var(--mia-ink);
+  font-family: var(--mia-font-body);
+  font-size: 16px; /* 16px evita el zoom automático en iOS */
+  transition: border-color 180ms ease-out, box-shadow 180ms ease-out;
+}
+.mia-input::placeholder {
+  color: var(--mia-dim);
+}
+.mia-input:focus {
+  outline: none;
+  border-color: var(--mia-accent-ink);
+  box-shadow: 0 0 0 3px rgba(163, 230, 53, 0.45);
+}
+.mia-input[aria-invalid="true"] {
+  border-color: var(--mia-danger);
+}
+textarea.mia-input {
+  min-height: 128px;
+  resize: vertical;
+}
+.mia-error {
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--mia-danger);
+}
+
+/* Selector de entrada (radios en píldora). */
+.mia-choice {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid var(--mia-border-strong);
+  background: var(--mia-elev);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mia-muted);
+  cursor: pointer;
+  transition: background-color 180ms ease-out, border-color 180ms ease-out, color 180ms ease-out;
+}
+input:checked + .mia-choice {
+  background: var(--mia-accent);
+  border-color: var(--mia-accent);
+  color: var(--mia-ink);
+}
+input:focus-visible + .mia-choice {
+  outline: 2px solid var(--mia-accent-ink);
+  outline-offset: 2px;
+}
+
+/* ── Avisos ───────────────────────────────────────────── */
+.mia-alert {
+  border-radius: var(--mia-radius-sm);
+  border: 1px solid var(--mia-border-strong);
+  padding: 12px 16px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.mia-alert-ok {
+  background: var(--mia-accent-soft);
+  border-color: rgba(63, 98, 18, 0.35);
+  color: var(--mia-accent-ink);
+}
+.mia-alert-error {
+  background: var(--mia-danger-soft);
+  border-color: rgba(185, 28, 28, 0.35);
+  color: var(--mia-danger);
+}
+.mia-alert ul {
+  margin-top: 8px;
+  max-height: 12rem;
+  overflow: auto;
+  padding-left: 1.25rem;
+  list-style: disc;
+  font-size: 12px;
+}
+
+/* ── Chips y estadísticas ─────────────────────────────── */
+.mia-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-family: var(--mia-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: var(--mia-surface);
+  color: var(--mia-muted);
+}
+.mia-chip-ok {
+  background: var(--mia-accent-soft);
+  color: var(--mia-accent-ink);
+}
+.mia-stat-label {
+  font-family: var(--mia-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--mia-muted);
+}
+.mia-stat-value {
+  margin-top: 4px;
+  font-family: var(--mia-font-display);
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+/* ── Tabla ────────────────────────────────────────────── */
+.mia-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--mia-border);
+  border-radius: var(--mia-radius);
+  background: var(--mia-elev);
+}
+.mia-table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+  font-size: 14px;
+  text-align: left;
+}
+.mia-table th {
+  background: var(--mia-surface);
+  padding: 12px 16px;
+  font-family: var(--mia-font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mia-muted);
+}
+.mia-table td {
+  padding: 12px 16px;
+  vertical-align: top;
+  border-top: 1px solid var(--mia-border);
+}
+
+/* ── Fondo de puntos (como imt-dots, en claro) ────────── */
+.mia-dots {
+  background-image: radial-gradient(rgba(5, 7, 5, 0.09) 1px, transparent 1px);
+  background-size: 22px 22px;
+  mask-image: linear-gradient(to bottom, #000 0%, transparent 85%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="mia"] * {
+    transition-duration: 0.01ms !important;
+  }
+}

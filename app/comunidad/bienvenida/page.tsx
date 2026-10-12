@@ -10,12 +10,14 @@ export default async function BienvenidaPage() {
 
   return (
     <div className="mx-auto max-w-xl">
-      <h1 className="font-display text-3xl font-semibold">Hola, {m.nombre.split(" ")[0]}</h1>
-      <p className="mt-2 text-muted-foreground">
-        Antes de entrar necesitamos tu autorización para tratar tus datos personales.
+      <p className="mia-eyebrow">Bienvenida</p>
+      <h1 className="mia-title mt-4">Hola, {m.nombre.split(" ")[0]}</h1>
+      <p className="mia-lead mt-4">
+        Qué bueno tenerte en Master IA 360. Antes de entrar necesitamos tu autorización para tratar
+        tus datos personales.
       </p>
 
-      <section className="mt-8 space-y-3 rounded-2xl border border-line-strong bg-surface-1 p-5 text-sm leading-relaxed">
+      <section className="mia-card-soft mt-8 space-y-3 text-sm leading-relaxed">
         <h2 className="text-base font-semibold">Tratamiento de datos personales</h2>
         <p>
           Alexander Cast, responsable del tratamiento, recoge tu nombre, correo, WhatsApp y la
@@ -33,7 +35,7 @@ export default async function BienvenidaPage() {
         </p>
         <p>
           Lee la{" "}
-          <Link href="/legal/privacidad" target="_blank" className="text-gold underline">
+          <Link href="/legal/privacidad" target="_blank" className="mia-link">
             política de privacidad completa
           </Link>
           .
@@ -41,7 +43,7 @@ export default async function BienvenidaPage() {
       </section>
 
       <form action={aceptarPrivacidad} className="mt-6">
-        <button type="submit" className={botonCls + " w-full"}>
+        <button type="submit" className={botonCls + " mia-btn-block"}>
           Acepto y quiero continuar
         </button>
       </form>

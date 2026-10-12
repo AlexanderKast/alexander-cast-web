@@ -15,7 +15,7 @@ export function BotonReenviar({ userId }: { userId: string }) {
       {estado.status !== "idle" ? (
         <span
           role="status"
-          className={"text-xs " + (estado.status === "ok" ? "text-gold" : "text-destructive")}
+          className={"text-xs " + (estado.status === "ok" ? "mia-link no-underline" : "mia-error")}
         >
           {estado.message}
         </span>

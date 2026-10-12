@@ -28,7 +28,7 @@ export function FormAcceso() {
         aria-hidden="true"
         className="absolute -left-[9999px] h-0 w-0 opacity-0"
       />
-      <button type="submit" disabled={pendiente} className={botonCls + " w-full"}>
+      <button type="submit" disabled={pendiente} className={botonCls + " mia-btn-block"}>
         {pendiente ? "Enviando…" : "Enviarme el enlace de acceso"}
       </button>
       <Aviso estado={estado} />

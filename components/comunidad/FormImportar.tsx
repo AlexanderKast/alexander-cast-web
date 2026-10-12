@@ -15,7 +15,7 @@ export function FormImportar({ cohortes }: { cohortes: { id: string; nombre: str
           name="archivo"
           accept=".csv,text/csv"
           required
-          className={inputCls + " file:mr-4 file:rounded-lg file:border-0 file:bg-surface-3 file:px-3 file:py-1.5 file:text-sm file:text-foreground"}
+          className={inputCls + " file:mr-4 file:rounded-full file:border-0 file:bg-[#ecfccb] file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-[#3f6212]"}
         />
       </Campo>
       {cohortes.length > 1 ? (
@@ -31,7 +31,7 @@ export function FormImportar({ cohortes }: { cohortes: { id: string; nombre: str
       ) : (
         <input type="hidden" name="cohorte_id" value={cohortes[0]?.id ?? ""} />
       )}
-      <button type="submit" disabled={pendiente} className={botonCls + " w-full sm:w-auto"}>
+      <button type="submit" disabled={pendiente} className={botonCls}>
         {pendiente ? "Importando…" : "Importar alumnos"}
       </button>
       <Aviso estado={estado} />
