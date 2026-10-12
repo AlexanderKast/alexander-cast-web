@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { getMiembro } from "@/lib/comunidad/auth";
 import { FormAcceso } from "@/components/comunidad/FormAcceso";
+import { FormEntradaDirecta } from "@/components/comunidad/FormEntradaDirecta";
+import { entradaDirectaActiva } from "../dev-actions";
 
 export default async function LoginComunidadPage({
   searchParams,
@@ -27,6 +29,15 @@ export default async function LoginComunidadPage({
       <div className="mia-card mt-8">
         <FormAcceso />
       </div>
+      {entradaDirectaActiva() ? (
+        <div className="mia-card-soft mt-4">
+          <p className="mia-eyebrow">Solo en tu equipo · desarrollo</p>
+          <p className="mia-muted mb-4 mt-2 text-sm">
+            Entrada directa con el correo, sin enlace. No existe en producción.
+          </p>
+          <FormEntradaDirecta />
+        </div>
+      ) : null}
     </div>
   );
 }
