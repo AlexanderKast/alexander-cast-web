@@ -56,6 +56,25 @@ export async function solicitarAcceso(_p: EstadoForm, fd: FormData): Promise<Est
     return { status: "error", message: "Muchos intentos seguidos. Prueba en unos minutos." };
   }
 
+  // Sin claves del servidor el correo NUNCA saldría: mejor decirlo que fingir
+  // un envío (no revela nada sobre quién está inscrito).
+  const faltan = [
+    !(process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL) && "SUPABASE_URL",
+    !process.env.SUPABASE_SERVICE_ROLE_KEY && "SUPABASE_SERVICE_ROLE_KEY",
+    !process.env.RESEND_API_KEY && "RESEND_API_KEY",
+    !(process.env.COMUNIDAD_RESEND_FROM ?? process.env.RESEND_FROM) && "RESEND_FROM",
+  ].filter(Boolean) as string[];
+  if (faltan.length) {
+    console.error(`[comunidad] El acceso por correo no está configurado. Faltan: ${faltan.join(", ")}`);
+    return {
+      status: "error",
+      message:
+        process.env.NODE_ENV === "production"
+          ? "El acceso por correo no está disponible en este momento. Intenta más tarde."
+          : `Falta configurar el servidor: ${faltan.join(", ")} (agrégalas en .env.local).`,
+    };
+  }
+
   // Misma respuesta exista o no el correo (no se revela quién está inscrito),
   // y el envío va después de responder para que el tiempo tampoco lo delate.
   after(async () => {
