@@ -2,7 +2,6 @@ import Link from "next/link";
 import QRCode from "qrcode";
 import { requireAdminComunidad } from "@/lib/comunidad/auth";
 import { baseUrl } from "@/lib/comunidad/url";
-import { formatoPrecio } from "@/lib/comunidad/precio";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +28,7 @@ export default async function CobrarPage() {
       <p className="mia-eyebrow mt-6">Stand · Feria Effix</p>
       <h1 className="mia-title mt-3">Escanea y reserva</h1>
       <p className="mia-lead mx-auto mt-3">
-        Master IA 360 · {formatoPrecio()} USD. Pagas desde tu celular y recibes el acceso por correo.
+        Master IA 360. Eliges tu entrada, pagas desde tu celular en pesos y recibes el acceso por correo.
       </p>
       <div className="mia-card mx-auto mt-8 !p-4" style={{ width: "min(100%, 392px)" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}

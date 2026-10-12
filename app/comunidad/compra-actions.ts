@@ -5,7 +5,8 @@ import { redirect } from "next/navigation";
 import { clientIp, emailLimiter, formLimiter } from "@/lib/rate-limit";
 import { isSameOriginStrict } from "@/lib/same-origin";
 import { compraSchema } from "@/lib/comunidad/validators";
-import { ConfigPagoError, crearCheckout, crearPedido, tienePagoConfirmado } from "@/lib/comunidad/pedidos";
+import { ConfigPagoError, crearCheckout, crearPedido, cuposRestantes, tienePagoConfirmado } from "@/lib/comunidad/pedidos";
+import { nivelesDisponibles } from "@/lib/comunidad/oferta";
 import type { EstadoForm } from "./actions";
 
 /**
@@ -22,6 +23,7 @@ export async function iniciarCompra(_p: EstadoForm, fd: FormData): Promise<Estad
     nombre: fd.get("nombre"),
     email: fd.get("email"),
     whatsapp: fd.get("whatsapp"),
+    nivel: fd.get("nivel"),
     acepto: fd.get("acepto") ?? "no",
   });
   if (!parsed.success) {
@@ -33,6 +35,14 @@ export async function iniciarCompra(_p: EstadoForm, fd: FormData): Promise<Estad
     return { status: "error", message: "Revisa los datos.", fieldErrors };
   }
   const d = parsed.data;
+
+  // El nivel debe estar vigente HOY (la preventa cierra el 18; el cierre general, el 21 a las 8 p. m.).
+  if (!nivelesDisponibles().includes(d.nivel)) {
+    return {
+      status: "error",
+      message: "Ese nivel ya no está disponible. Recarga la página para ver las opciones vigentes.",
+    };
+  }
 
   const ip = clientIp(hdrs);
   const porIp = await formLimiter(`mia:buy:ip:${ip}`);
@@ -49,6 +59,17 @@ export async function iniciarCompra(_p: EstadoForm, fd: FormData): Promise<Estad
     };
   }
 
+  const cupos = await cuposRestantes();
+  if (cupos.total <= 0 || (d.nivel === "vip" && cupos.vip <= 0)) {
+    return {
+      status: "error",
+      message:
+        d.nivel === "vip" && cupos.total > 0
+          ? "Los cupos VIP se agotaron. Puedes elegir el otro nivel o escribirnos por WhatsApp."
+          : "Los 200 cupos de esta cohorte se agotaron. Escríbenos por WhatsApp y te dejamos en la lista de espera.",
+    };
+  }
+
   let url: string;
   try {
     const pedido = await crearPedido({
@@ -56,6 +77,7 @@ export async function iniciarCompra(_p: EstadoForm, fd: FormData): Promise<Estad
       email: d.email,
       whatsapp: d.whatsapp,
       origen: fd.get("o") === "stand" ? "stand" : "web",
+      nivel: d.nivel,
       ip,
     });
     url = await crearCheckout(pedido);

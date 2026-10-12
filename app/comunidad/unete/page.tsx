@@ -1,11 +1,23 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FormCompra } from "@/components/comunidad/FormCompra";
+import { FormCompra, type OpcionNivel } from "@/components/comunidad/FormCompra";
 import { Countdown } from "@/components/comunidad/Countdown";
-import { CLASE_PRIVADA, FECHA_LIMITE_BONO, bonoVigente, fechaLimiteLegible } from "@/lib/comunidad/oferta";
-import { NOMBRE_PRODUCTO, formatoPrecio } from "@/lib/comunidad/precio";
+import {
+  AVISO_CLAUDE,
+  CUPOS_TOTAL,
+  FIN_PREVENTA,
+  INCLUYE_TODOS,
+  NIVELES,
+  SESION_ARRANQUE,
+  fechaLimiteLegible,
+  montoCentavos,
+  nivelesDisponibles,
+  preventaVigente,
+} from "@/lib/comunidad/oferta";
+import { cuposRestantes } from "@/lib/comunidad/pedidos";
+import { NOMBRE_PRODUCTO, formatoPesos } from "@/lib/comunidad/precio";
 
-/** Esta es la página de venta: sí se puede indexar y compartir. */
+/** Página de venta: sí se puede indexar y compartir. */
 export const metadata: Metadata = {
   title: `${NOMBRE_PRODUCTO} · Inscripciones abiertas`,
   description:
@@ -15,27 +27,34 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-const PUNTOS = [
-  ["8 clases en vivo", "2 por semana durante 4 semanas, con grabación para repasar."],
-  ["Entregables reales", "Sales con tareas hechas y materiales listos para aplicar en tu negocio."],
-  ["Comunidad activa", "Preguntas, avances y recursos con otros emprendedores de tu cohorte."],
-  ["60 días de acompañamiento", "Después del programa, un live semanal para resolver tus dudas."],
-] as const;
-
 const PREGUNTAS = [
-  ["¿Cuándo empiezan las clases?", "El jueves 22 de octubre. Son 8 clases, 2 por semana."],
-  ["¿Cómo entro a la plataforma?", "Al pagar recibes un correo con un botón de acceso. Sin contraseñas."],
+  ["¿Cuándo empiezan las clases?", "El jueves 22 de octubre. Son 8 clases de 2,5 horas, 2 por semana, 100% virtuales."],
+  ["¿Cómo entro a la plataforma?", "Al pagar recibes un correo con un botón de acceso. Sin contraseñas. Ahí subes la ficha de tu negocio."],
   ["¿Qué pasa si no termino hoy el pago?", "Tu lugar no se pierde: te escribimos por WhatsApp para ayudarte a completarlo."],
+  ["¿Qué necesito aparte?", AVISO_CLAUDE],
 ] as const;
 
 export default async function UnetePage({
   searchParams,
 }: {
-  searchParams: Promise<{ cancelado?: string; o?: string }>;
+  searchParams: Promise<{ cancelado?: string; o?: string; n?: string }>;
 }) {
-  const { cancelado, o } = await searchParams;
-  const conBono = bonoVigente();
-  const precio = formatoPrecio();
+  const { cancelado, o, n } = await searchParams;
+  const disponibles = nivelesDisponibles();
+  const cupos = await cuposRestantes().catch(() => null);
+  const agotado = cupos !== null && cupos.total <= 0;
+
+  const opciones: OpcionNivel[] = disponibles
+    .filter((id) => !(id === "vip" && cupos !== null && cupos.vip <= 0))
+    .map((id) => ({
+      id,
+      nombre: NIVELES[id].nombre,
+      precio: formatoPesos(montoCentavos(id)),
+      nota: NIVELES[id].nota,
+      extras: NIVELES[id].extras,
+    }));
+  const inicial = opciones.find((x) => x.id === n)?.id ?? opciones[0]?.id;
+  const abierto = opciones.length > 0 && !agotado && inicial !== undefined;
 
   return (
     <div className="space-y-12 sm:space-y-16">
@@ -45,11 +64,12 @@ export default async function UnetePage({
         <h1 className="mia-title mt-4 max-w-3xl">Aprende a usar IA en tu negocio, en vivo y acompañado</h1>
         <p className="mia-lead mt-5">
           {NOMBRE_PRODUCTO} es un programa de 4 semanas para emprendedores que quieren pasar de «probar
-          herramientas» a tener sistemas funcionando.
+          herramientas» a tener sistemas funcionando: una web, una app y una herramienta, construidas contigo.
         </p>
         <div className="mt-6 flex flex-wrap items-center gap-3">
-          <span className="mia-chip mia-chip-ok">Pago único {precio}</span>
-          <span className="mia-chip">Empieza el 22 de octubre</span>
+          <span className="mia-chip mia-chip-ok">Empieza el 22 de octubre</span>
+          <span className="mia-chip">{CUPOS_TOTAL} cupos</span>
+          <span className="mia-chip">8 clases en vivo</span>
         </div>
       </header>
 
@@ -61,37 +81,33 @@ export default async function UnetePage({
 
       <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
         <div className="space-y-8">
-          {conBono ? (
+          {preventaVigente() ? (
             <section className="mia-card-dark">
-              <p className="mia-eyebrow">Bono · solo hasta el {fechaLimiteLegible()}</p>
-              <h2 className="mt-3 text-2xl font-bold sm:text-3xl">{CLASE_PRIVADA.titulo}</h2>
-              <p className="mia-lead mt-3">{CLASE_PRIVADA.resumen}</p>
-              <ul className="mt-5 space-y-2 text-sm">
-                {CLASE_PRIVADA.incluye.map((x) => (
-                  <li key={x} className="flex gap-2">
-                    <span aria-hidden="true" className="text-[var(--mia-accent)]">✓</span>
-                    {x}
-                  </li>
-                ))}
-              </ul>
-              <p className="mia-label mt-7 !text-[var(--mia-dark-muted)]">El bono se cierra en</p>
-              <Countdown hasta={FECHA_LIMITE_BONO.toISOString()} />
+              <p className="mia-eyebrow">Precio de feria · hasta el domingo {fechaLimiteLegible()}</p>
+              <h2 className="mt-3 text-2xl font-bold sm:text-3xl">
+                {formatoPesos(montoCentavos("preventa"))} y entras con la {SESION_ARRANQUE.titulo.toLowerCase()}
+              </h2>
+              <p className="mia-lead mt-3">{SESION_ARRANQUE.resumen}</p>
+              <p className="mia-label mt-7 !text-[var(--mia-dark-muted)]">El precio de feria cierra en</p>
+              <Countdown hasta={FIN_PREVENTA.toISOString()} />
               <p className="mt-4 text-xs text-[var(--mia-dark-muted)]">
-                Solo para quienes se inscriben antes del cierre. Después, la clase privada no se vuelve a ofrecer.
+                Después del {fechaLimiteLegible()} el programa cuesta {formatoPesos(montoCentavos("regular"))} y la
+                sesión de arranque queda solo para el VIP.
               </p>
             </section>
           ) : null}
 
           <section>
-            <p className="mia-eyebrow">Qué incluye</p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {PUNTOS.map(([t, d]) => (
-                <article key={t} className="mia-card-soft !p-5">
-                  <h3 className="text-base font-semibold">{t}</h3>
-                  <p className="mia-muted mt-1 text-sm leading-relaxed">{d}</p>
-                </article>
+            <p className="mia-eyebrow">Qué incluye todo</p>
+            <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+              {INCLUYE_TODOS.map((x) => (
+                <li key={x} className="mia-card-soft flex gap-3 !p-5 text-sm leading-relaxed">
+                  <span aria-hidden="true" className="text-[var(--mia-accent-ink)]">✓</span>
+                  {x}
+                </li>
               ))}
-            </div>
+            </ul>
+            <p className="mia-muted mt-4 text-sm">{AVISO_CLAUDE}</p>
           </section>
 
           <section>
@@ -110,12 +126,20 @@ export default async function UnetePage({
         <aside id="inscripcion" className="lg:sticky lg:top-24">
           <div className="mia-card">
             <p className="mia-eyebrow">Reserva tu lugar</p>
-            <p className="mt-3 font-[family-name:var(--mia-font-display)] text-4xl font-bold tracking-tight">
-              {precio} <span className="mia-muted text-base font-normal">USD · pago único</span>
-            </p>
-            <div className="mt-6">
-              <FormCompra precio={precio} origen={o === "stand" ? "stand" : "web"} />
-            </div>
+            {abierto ? (
+              <div className="mt-5">
+                <FormCompra niveles={opciones} nivelInicial={inicial} origen={o === "stand" ? "stand" : "web"} />
+              </div>
+            ) : (
+              <div className="mt-4 space-y-3">
+                <h2 className="text-xl font-bold">
+                  {agotado ? "Los cupos de esta cohorte se agotaron" : "Las inscripciones de esta cohorte cerraron"}
+                </h2>
+                <p className="mia-muted text-sm leading-relaxed">
+                  Escríbenos por WhatsApp y te dejamos en la lista de espera de la cohorte 2.
+                </p>
+              </div>
+            )}
           </div>
           <p className="mia-muted mt-4 text-center text-sm">
             ¿Ya tienes cuenta?{" "}

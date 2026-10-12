@@ -49,6 +49,7 @@ export const compraSchema = z.object({
     .string()
     .trim()
     .regex(/^\+?[\d\s-]{7,20}$/, "WhatsApp no válido"),
+  nivel: z.enum(["preventa", "regular", "vip"]),
   acepto: z.literal("on", { error: "Debes aceptar el tratamiento de datos para continuar." }),
 });
 export type CompraInput = z.infer<typeof compraSchema>;

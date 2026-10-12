@@ -12,8 +12,8 @@ import {
   type PagoNormalizado,
   type PedidoEsperado,
 } from "./pagos";
-import { bonoVigente } from "./oferta";
-import { DESCRIPCION_PRODUCTO, MONEDA, NOMBRE_PRODUCTO, PRECIO_CENTAVOS } from "./precio";
+import { CUPOS_TOTAL, CUPOS_VIP, incluyeSesionArranque, montoCentavos, NIVELES, type Nivel } from "./oferta";
+import { DESCRIPCION_PRODUCTO, MONEDA, NOMBRE_PRODUCTO } from "./precio";
 import { getStripe, simuladorActivo, stripeConfigurado } from "./stripe";
 import { baseUrl } from "./url";
 
@@ -29,6 +29,7 @@ export interface Pedido {
   estado: EstadoPedido;
   motivoRevision: string | null;
   origen: "web" | "stand";
+  nivel: Nivel;
   stripeSessionId: string | null;
   stripePaymentIntent: string | null;
   checkoutUrl: string | null;
@@ -41,7 +42,7 @@ export interface Pedido {
 }
 
 const COLS =
-  "id, email, nombre, whatsapp, monto_centavos, moneda, estado, motivo_revision, origen, stripe_session_id, " +
+  "id, email, nombre, whatsapp, monto_centavos, moneda, estado, motivo_revision, origen, nivel, stripe_session_id, " +
   "stripe_payment_intent, checkout_url, user_id, aprovisionado_en, error_aprovisionamiento, pagado_en, bonus_incluido, created_at";
 
 function aPedido(r: Record<string, unknown>): Pedido {
@@ -55,6 +56,7 @@ function aPedido(r: Record<string, unknown>): Pedido {
     estado: r.estado as EstadoPedido,
     motivoRevision: (r.motivo_revision as string | null) ?? null,
     origen: r.origen as "web" | "stand",
+    nivel: r.nivel as Nivel,
     stripeSessionId: (r.stripe_session_id as string | null) ?? null,
     stripePaymentIntent: (r.stripe_payment_intent as string | null) ?? null,
     checkoutUrl: (r.checkout_url as string | null) ?? null,
@@ -78,6 +80,7 @@ export async function crearPedido(input: {
   email: string;
   whatsapp?: string;
   origen: "web" | "stand";
+  nivel: Nivel;
   ip: string;
 }): Promise<Pedido> {
   const { data, error } = await db()
@@ -86,12 +89,14 @@ export async function crearPedido(input: {
       nombre: input.nombre,
       email: input.email,
       whatsapp: input.whatsapp ?? null,
-      monto_centavos: PRECIO_CENTAVOS,
+      // El monto sale SIEMPRE de la tabla de la oferta, nunca del navegador.
+      monto_centavos: montoCentavos(input.nivel),
       moneda: MONEDA,
+      nivel: input.nivel,
       origen: input.origen,
       privacidad_aceptada_en: new Date().toISOString(),
       privacidad_ip: input.ip,
-      bonus_incluido: bonoVigente(),
+      bonus_incluido: incluyeSesionArranque(input.nivel),
     })
     .select(COLS)
     .single();
@@ -122,6 +127,31 @@ export function idsRecuperables(pedidos: Pedido[], ahora: number = Date.now()): 
   );
 }
 
+/**
+ * Cupos que quedan: 200 en total y 10 de VIP. Cuenta inscritos, pagos ya
+ * confirmados que aún no tienen cuenta y checkouts abiertos (30 min de
+ * reserva), para no vender el mismo cupo a dos personas a la vez.
+ */
+export async function cuposRestantes(): Promise<{ total: number; vip: number }> {
+  const admin = db();
+  const reservaDesde = new Date(Date.now() - 35 * 60_000).toISOString();
+  const n = (r: { count: number | null }) => r.count ?? 0;
+
+  const [insc, inscVip, pag, pagVip, pend, pendVip] = await Promise.all([
+    admin.from("mia_inscripciones").select("id", { count: "exact", head: true }),
+    admin.from("mia_inscripciones").select("id", { count: "exact", head: true }).eq("entrada", "vip"),
+    admin.from("mia_pedidos").select("id", { count: "exact", head: true }).eq("estado", "pagado").is("aprovisionado_en", null),
+    admin.from("mia_pedidos").select("id", { count: "exact", head: true }).eq("estado", "pagado").is("aprovisionado_en", null).eq("nivel", "vip"),
+    admin.from("mia_pedidos").select("id", { count: "exact", head: true }).eq("estado", "pendiente").gte("created_at", reservaDesde),
+    admin.from("mia_pedidos").select("id", { count: "exact", head: true }).eq("estado", "pendiente").gte("created_at", reservaDesde).eq("nivel", "vip"),
+  ]);
+
+  return {
+    total: Math.max(0, CUPOS_TOTAL - n(insc) - n(pag) - n(pend)),
+    vip: Math.max(0, CUPOS_VIP - n(inscVip) - n(pagVip) - n(pendVip)),
+  };
+}
+
 /** ¿Ya hay un pago confirmado con este correo? Evita cobrar dos veces a la misma persona. */
 export async function tienePagoConfirmado(email: string): Promise<boolean> {
   const { count } = await db()
@@ -149,7 +179,7 @@ export async function crearCheckout(pedido: Pedido): Promise<string> {
             price_data: {
               currency: pedido.moneda,
               unit_amount: pedido.montoCentavos,
-              product_data: { name: NOMBRE_PRODUCTO, description: DESCRIPCION_PRODUCTO },
+              product_data: { name: `${NOMBRE_PRODUCTO} — ${NIVELES[pedido.nivel].nombre}`, description: DESCRIPCION_PRODUCTO },
             },
           },
         ],
@@ -287,7 +317,7 @@ export async function aprovisionar(pedidoId: string): Promise<void> {
       nombre: pedido.nombre,
       email: pedido.email,
       whatsapp: pedido.whatsapp ?? undefined,
-      entrada: "regular",
+      entrada: pedido.nivel,
       cohorteId: cohorte.id,
     });
 

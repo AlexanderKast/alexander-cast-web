@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServer, createSupabaseServiceRole } from "@/lib/supabase/server";
 import { correoSchema } from "@/lib/comunidad/validators";
+import { entradaDirectaActiva } from "@/lib/comunidad/dev";
 import type { EstadoForm } from "./actions";
 
 /**
@@ -17,10 +18,6 @@ import type { EstadoForm } from "./actions";
  *    (incluido el admin), canjeando un enlace generado en el servidor.
  *  - Sin ella: solo las cuentas demo (+demoN), con la clave de .env.local.
  */
-export function entradaDirectaActiva(): boolean {
-  return process.env.NODE_ENV !== "production" && process.env.COMUNIDAD_DEV_LOGIN === "true";
-}
-
 export async function entradaDirecta(_p: EstadoForm, fd: FormData): Promise<EstadoForm> {
   if (!entradaDirectaActiva()) return { status: "error", message: "No disponible." };
 

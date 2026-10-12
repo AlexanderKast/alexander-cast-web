@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { requireAdminComunidad } from "@/lib/comunidad/auth";
 import { idsRecuperables, listarPedidos, type Pedido } from "@/lib/comunidad/pedidos";
-import { formatoPrecio } from "@/lib/comunidad/precio";
+import { formatoPesos } from "@/lib/comunidad/precio";
+import { NIVELES } from "@/lib/comunidad/oferta";
 import { enlaceWhatsapp } from "@/lib/comunidad/whatsapp";
 import { baseUrl } from "@/lib/comunidad/url";
 import { BotonReenviar } from "@/components/comunidad/AccionesAlumno";
@@ -30,7 +31,7 @@ export default async function PagosPage() {
 
   const stats: [string, string | number][] = [
     ["Pagados", pagados.length],
-    ["Ingresos", formatoPrecio(ingresos)],
+    ["Ingresos (COP)", formatoPesos(ingresos)],
     ["Por recuperar", recuperables.length],
     ["A revisar", aRevisar.length],
   ];
@@ -65,8 +66,9 @@ export default async function PagosPage() {
             <tr>
               <th>Lead / comprador</th>
               <th>Estado</th>
+              <th>Entrada</th>
               <th>Origen</th>
-              <th>Bono</th>
+              <th>Sesión arranque</th>
               <th>Fecha</th>
               <th />
             </tr>
@@ -96,6 +98,7 @@ export default async function PagosPage() {
                       <p className="mia-error text-xs">{p.errorAprovisionamiento}</p>
                     ) : null}
                   </td>
+                  <td>{NIVELES[p.nivel].nombre.split(" ·")[0]}</td>
                   <td>{p.origen === "stand" ? "Stand" : "Web"}</td>
                   <td>{p.bonusIncluido ? "Sí" : "—"}</td>
                   <td className="whitespace-nowrap text-xs">
@@ -119,7 +122,7 @@ export default async function PagosPage() {
             })}
             {pedidos.length === 0 ? (
               <tr>
-                <td colSpan={6} className="mia-muted py-10 text-center">
+                <td colSpan={7} className="mia-muted py-10 text-center">
                   Aún no hay pedidos. Comparte <code>/comunidad/unete</code> o muestra el QR en el stand.
                 </td>
               </tr>

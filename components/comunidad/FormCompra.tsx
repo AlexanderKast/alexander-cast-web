@@ -1,17 +1,74 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import Link from "next/link";
 import { iniciarCompra } from "@/app/comunidad/compra-actions";
 import { Aviso, Campo, INICIAL, botonCls, inputCls } from "./ui";
 
-export function FormCompra({ precio, origen }: { precio: string; origen: "web" | "stand" }) {
+export interface OpcionNivel {
+  id: "preventa" | "regular" | "vip";
+  nombre: string;
+  precio: string; // ya formateado, p. ej. «$790.000»
+  nota: string;
+  extras: string[];
+}
+
+export function FormCompra({
+  niveles,
+  nivelInicial,
+  origen,
+}: {
+  niveles: OpcionNivel[];
+  nivelInicial: OpcionNivel["id"];
+  origen: "web" | "stand";
+}) {
   const [estado, accion, pendiente] = useActionState(iniciarCompra, INICIAL);
+  const [nivel, setNivel] = useState<OpcionNivel["id"]>(nivelInicial);
   const errores = estado.status === "error" ? (estado.fieldErrors ?? {}) : {};
+  const elegido = niveles.find((n) => n.id === nivel) ?? niveles[0];
 
   return (
     <form action={accion} className="space-y-4">
       <input type="hidden" name="o" value={origen} />
+
+      <fieldset>
+        <legend className="mia-label">Elige tu entrada</legend>
+        <div className="space-y-2">
+          {niveles.map((n) => (
+            <label key={n.id} className="block cursor-pointer">
+              <input
+                type="radio"
+                name="nivel"
+                value={n.id}
+                checked={nivel === n.id}
+                onChange={() => setNivel(n.id)}
+                className="peer sr-only"
+              />
+              <span className="block rounded-2xl border border-[var(--mia-border-strong)] bg-[var(--mia-elev)] p-4 transition-colors peer-checked:border-[var(--mia-accent-ink)] peer-checked:bg-[var(--mia-accent-soft)] peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--mia-accent-ink)]">
+                <span className="flex items-baseline justify-between gap-3">
+                  <span className="text-sm font-semibold">{n.nombre}</span>
+                  <span className="font-[family-name:var(--mia-font-display)] text-xl font-bold tracking-tight">
+                    {n.precio}
+                  </span>
+                </span>
+                <span className="mia-muted mt-1 block text-xs leading-snug">{n.nota}</span>
+                {n.extras.length ? (
+                  <span className="mt-2 block space-y-1 text-xs">
+                    {n.extras.map((x) => (
+                      <span key={x} className="flex gap-2">
+                        <span aria-hidden="true">✓</span>
+                        {x}
+                      </span>
+                    ))}
+                  </span>
+                ) : null}
+              </span>
+            </label>
+          ))}
+        </div>
+        {errores.nivel ? <p className="mia-error">{errores.nivel}</p> : null}
+      </fieldset>
+
       <Campo etiqueta="Nombre completo" error={errores.nombre}>
         <input name="nombre" required autoComplete="name" autoCapitalize="words" className={inputCls} />
       </Campo>
@@ -60,10 +117,10 @@ export function FormCompra({ precio, origen }: { precio: string; origen: "web" |
       {errores.acepto ? <p className="mia-error">{errores.acepto}</p> : null}
 
       <button type="submit" disabled={pendiente} className={botonCls + " mia-btn-block"}>
-        {pendiente ? "Llevándote al pago…" : `Pagar ${precio} y entrar`}
+        {pendiente ? "Llevándote al pago…" : `Pagar ${elegido.precio} COP y entrar`}
       </button>
       <p className="mia-muted text-center text-xs">
-        Pago seguro con Stripe. Al terminar recibes tu acceso por correo, sin contraseña.
+        Pago seguro con Stripe, en pesos colombianos. Al terminar recibes tu acceso por correo, sin contraseña.
       </p>
       <Aviso estado={estado} />
     </form>

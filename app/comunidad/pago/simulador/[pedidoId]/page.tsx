@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { obtenerPedido } from "@/lib/comunidad/pedidos";
 import { pedidoIdValido } from "@/lib/comunidad/pagos";
 import { simuladorActivo } from "@/lib/comunidad/stripe";
-import { formatoPrecio } from "@/lib/comunidad/precio";
+import { formatoPesos } from "@/lib/comunidad/precio";
 import { botonCls, botonSecundarioCls } from "@/components/comunidad/ui";
 import { simularPago } from "../actions";
 
@@ -31,7 +31,7 @@ export default async function SimuladorPage({ params }: { params: Promise<{ pedi
         <p className="font-medium">{pedido.nombre}</p>
         <p className="mia-muted">{pedido.email}</p>
         <p className="mt-2">
-          {formatoPrecio(pedido.montoCentavos)} · estado: <strong>{pedido.estado}</strong>
+          {formatoPesos(pedido.montoCentavos)} COP · {pedido.nivel} · estado: <strong>{pedido.estado}</strong>
         </p>
       </div>
       <div className="mt-6 space-y-3">

@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getMiembro } from "@/lib/comunidad/auth";
 import { FormAcceso } from "@/components/comunidad/FormAcceso";
 import { FormEntradaDirecta } from "@/components/comunidad/FormEntradaDirecta";
-import { entradaDirectaActiva } from "../dev-actions";
+import { entradaDirectaActiva } from "@/lib/comunidad/dev";
 
 export default async function LoginComunidadPage({
   searchParams,

@@ -1,10 +1,14 @@
-/** Precio único de Master IA 360. Cambiarlo aquí cambia el cobro y lo que ve el comprador. */
-export const PRECIO_CENTAVOS = 29_700; // US$297.00
-export const MONEDA = "usd";
+/** Moneda de cobro: pesos colombianos (la cohorte 1 es solo Colombia). Stripe la maneja con 2 decimales. */
+export const MONEDA = "cop";
 export const NOMBRE_PRODUCTO = "Master IA 360";
 export const DESCRIPCION_PRODUCTO =
-  "Programa en vivo de 4 semanas (8 clases), entregables y 60 días de comunidad activa.";
+  "Programa en vivo de 4 semanas (8 clases de 2,5 h), entregables y 60 días de comunidad activa.";
 
-export function formatoPrecio(centavos: number = PRECIO_CENTAVOS): string {
-  return `US$${(centavos / 100).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+/** Pesos → unidad mínima de Stripe (centavos). */
+export const pesosACentavos = (pesos: number): number => Math.round(pesos * 100);
+
+/** «$790.000» (el punto como separador de miles, sin depender del ICU del servidor). */
+export function formatoPesos(centavos: number): string {
+  const pesos = Math.round(centavos / 100);
+  return `$${String(pesos).replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
 }
