@@ -3,13 +3,19 @@ import type Stripe from "stripe";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { formatCop, planName, type PlanId } from "@/content/imt";
 import { baseUrl } from "@/lib/comunidad/url";
-import { correoComisionGenerada, correoPagoConfirmado, correoVentaEquipo } from "./correo";
+import {
+  correoCancelacionAnticipada,
+  correoComisionGenerada,
+  correoPagoConfirmado,
+  correoVentaEquipo,
+} from "./correo";
 import {
   aMenorUnidad,
   COMISION_PCT,
   decidirComision,
   deMenorUnidad,
   importeCop,
+  MESES_MINIMOS,
   minimoHasta,
   normalizarCodigo,
   type CheckoutInput,
@@ -104,6 +110,13 @@ export async function crearCheckout(
           },
         ],
         metadata,
+        custom_text: {
+          submit: {
+            message: mensual
+              ? `Compromiso mínimo de ${MESES_MINIMOS} meses: se cobran ${MESES_MINIMOS} mensualidades y después sigue mes a mes hasta que canceles.`
+              : "Pago anual único: 10 meses pagados, 12 meses de servicio.",
+          },
+        },
         ...(mensual
           ? { subscription_data: { metadata } }
           : { payment_intent_data: { metadata } }),
@@ -301,7 +314,7 @@ async function despachar(db: SupabaseClient, evento: Stripe.Event, base: string)
     case "invoice.payment_failed":
       return cambiarSuscripcion(db, pedidoIdDe(obj), "en_mora");
     case "customer.subscription.deleted":
-      return cambiarSuscripcion(db, pedidoIdDe(obj), "cancelada");
+      return suscripcionCancelada(db, pedidoIdDe(obj));
     case "charge.refunded":
       return reembolso(db, obj as Stripe.Charge);
     default:
@@ -333,6 +346,75 @@ async function cambiarSuscripcion(
     .eq("periodo", "mensual");
   if (error) throw new Error(`No se pudo actualizar la suscripción del pedido ${pedidoId}: ${error.message}`);
   return `suscripcion_${estado}`;
+}
+
+/**
+ * Compromiso del contrato mínimo: la suscripción mensual pasa a un calendario de Stripe
+ * con MESES_MINIMOS cobros y, al cumplirlos, se libera y sigue mes a mes hasta que se cancele.
+ * Idempotente: si la suscripción ya tiene calendario no hace nada. Si Stripe falla, lanza para
+ * que el evento se reintente (el pedido ya queda guardado como pagado).
+ */
+async function asegurarMinimo(subscripcionId: string | null): Promise<void> {
+  if (!subscripcionId) return;
+  const stripe = getImtStripe();
+  const sub = await stripe.subscriptions.retrieve(subscripcionId);
+  if (idDe(sub.schedule)) return;
+
+  const item = sub.items.data[0];
+  const precio = idDe(item?.price);
+  if (!item || !precio) throw new Error(`La suscripción ${subscripcionId} no tiene un precio que programar`);
+
+  const horario = await stripe.subscriptionSchedules.create({ from_subscription: subscripcionId });
+  const fase = horario.phases[0];
+  if (!fase) throw new Error(`El calendario ${horario.id} no trae fase inicial`);
+
+  await stripe.subscriptionSchedules.update(horario.id, {
+    end_behavior: "release",
+    proration_behavior: "none",
+    phases: [
+      {
+        start_date: fase.start_date,
+        items: [{ price: precio, quantity: item.quantity ?? 1 }],
+        duration: { interval: "month", interval_count: MESES_MINIMOS },
+        metadata: sub.metadata,
+      },
+    ],
+  });
+}
+
+/** Cancelación de la suscripción: se marca y, si fue antes del mínimo, se avisa al equipo. */
+async function suscripcionCancelada(db: SupabaseClient, pedidoId: string | null): Promise<string> {
+  if (!pedidoId) return "ignorado:sin_imt";
+  const resultado = await cambiarSuscripcion(db, pedidoId, "cancelada");
+
+  const { data: pedido } = await db
+    .from("imt_pedidos")
+    .select("plan, empresa, nombre, email, whatsapp, estado, minimo_hasta")
+    .eq("id", pedidoId)
+    .maybeSingle<{
+      plan: PlanId;
+      empresa: string;
+      nombre: string;
+      email: string;
+      whatsapp: string;
+      estado: string;
+      minimo_hasta: string | null;
+    }>();
+  if (!pedido || pedido.estado !== "pagado" || !pedido.minimo_hasta) return resultado;
+
+  const minimo = new Date(pedido.minimo_hasta);
+  if (Date.now() >= minimo.getTime()) return resultado;
+
+  const envio = await correoCancelacionAnticipada({
+    empresa: pedido.empresa,
+    nombre: pedido.nombre,
+    email: pedido.email,
+    whatsapp: pedido.whatsapp,
+    plan: pedido.plan,
+    minimoHasta: minimo,
+  });
+  if (!envio.ok) console.error("[imt-pagos] alerta de cancelación anticipada no enviada:", envio.error);
+  return "cancelada_antes_del_minimo";
 }
 
 /**
@@ -377,13 +459,21 @@ async function sesionPagada(db: SupabaseClient, sesionId: string | null, base: s
     .select("id")
     .maybeSingle<{ id: string }>();
   if (error) throw new Error(`No se pudo marcar pagado el pedido ${pedido.id}: ${error.message}`);
-  // Ya estaba pagado: es un reintento. No se repiten comisión ni correos.
-  if (!actualizado) return "ya_pagado";
+  // Si ya estaba pagado esto es un reintento (o un segundo evento del mismo pago). Los pasos de
+  // abajo son idempotentes, así que si un intento anterior falló a mitad (p. ej. Stripe caído al
+  // programar el mínimo) este los completa sin duplicar nada. Los correos solo salen la primera vez.
+  const primeraVez = Boolean(actualizado);
 
   await registrarCobro(db, pedido.id, idDe(sesion.invoice), pedido.importe_cop, ahora);
   const comision = await generarComision(db, pedido);
-  await avisar(pedido, comision);
-  if (comision) await avisarReferidor(db, pedido.id, base);
+  if (primeraVez) {
+    await avisar(pedido, comision);
+    if (comision) await avisarReferidor(db, pedido.id, base);
+  }
+  // Lo último: es lo único que depende de Stripe y puede fallar; si lanza, Stripe reintenta el evento.
+  await asegurarMinimo(subscripcion);
+
+  if (!primeraVez) return "ya_pagado";
   return comision ? "pagado_con_comision" : "pagado";
 }
 
@@ -395,6 +485,12 @@ async function registrarCobro(
   fecha: Date,
 ): Promise<void> {
   const fila = { pedido_id: pedidoId, stripe_invoice_id: facturaId, monto_cop: montoCop, pagado_at: fecha.toISOString() };
+  if (!facturaId) {
+    // Sin factura (pago único anual) no hay clave única en la base: se comprueba aquí para no duplicar en un reintento.
+    const { data: previos, error: errorPrevios } = await db.from("imt_cobros").select("id").eq("pedido_id", pedidoId).limit(1);
+    if (errorPrevios) throw new Error(`No se pudo leer los cobros del pedido ${pedidoId}: ${errorPrevios.message}`);
+    if (Array.isArray(previos) && previos.length > 0) return;
+  }
   // Con factura: único por factura (la primera puede llegar por dos eventos).
   const { error } = facturaId
     ? await db.from("imt_cobros").upsert(fila, { onConflict: "stripe_invoice_id", ignoreDuplicates: true })

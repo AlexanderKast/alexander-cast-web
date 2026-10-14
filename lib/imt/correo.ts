@@ -151,3 +151,27 @@ export function correoComisionGenerada(p: {
     ),
   });
 }
+
+/** Aviso interno: alguien canceló la suscripción antes de cumplir el contrato mínimo. */
+export function correoCancelacionAnticipada(p: {
+  empresa: string;
+  nombre: string;
+  email: string;
+  whatsapp: string;
+  plan: PlanId;
+  minimoHasta: Date;
+}): Promise<Resultado> {
+  const to = process.env.DIAGNOSTICO_NOTIFY_TO;
+  if (!to) return Promise.resolve({ ok: false, error: "Falta DIAGNOSTICO_NOTIFY_TO en el entorno" });
+  const hasta = p.minimoHasta.toLocaleDateString("es-CO", { dateStyle: "long", timeZone: "America/Bogota" });
+  return enviar({
+    to,
+    replyTo: p.email,
+    subject: `Cancelación antes del mínimo: ${p.empresa} (${planName(p.plan)})`,
+    html: envoltorio(
+      "Cancelación antes del contrato mínimo",
+      `<p style="font-size:15px;line-height:1.6;"><strong>${escapar(p.empresa)}</strong> canceló su suscripción del plan <strong>${escapar(planName(p.plan))}</strong> antes de cumplir los ${MESES_MINIMOS} meses (el mínimo vencía el ${escapar(hasta)}).</p>
+       <p style="font-size:14px;line-height:1.6;color:#555;">Contacto: ${escapar(p.nombre)} · ${escapar(p.email)} · ${escapar(p.whatsapp)}. Revisa si corresponde cobrar lo pendiente del mínimo.</p>`,
+    ),
+  });
+}

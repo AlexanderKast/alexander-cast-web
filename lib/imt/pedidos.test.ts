@@ -117,9 +117,31 @@ function crearDb(tablas: Record<string, Fila[]>): SupabaseClient {
 
 const sesionesStripe = new Map<string, Record<string, unknown>>();
 
+const stripeMock = vi.hoisted(() => ({
+  programadas: new Set<string>(),
+  crear: vi.fn(),
+  actualizar: vi.fn(),
+}));
+
 vi.mock("./stripe", () => ({
   getImtStripe: () => ({
     checkout: { sessions: { retrieve: async (id: string) => sesionesStripe.get(id) } },
+    subscriptions: {
+      retrieve: async (id: string) => ({
+        id,
+        schedule: stripeMock.programadas.has(id) ? "sub_sched_1" : null,
+        items: { data: [{ price: { id: "price_1" }, quantity: 1 }] },
+        metadata: { imt_pedido_id: "11111111-1111-4111-8111-111111111111" },
+      }),
+    },
+    subscriptionSchedules: {
+      create: async (params: { from_subscription: string }) => {
+        await stripeMock.crear(params);
+        stripeMock.programadas.add(params.from_subscription);
+        return { id: "sub_sched_1", phases: [{ start_date: 1_000 }] };
+      },
+      update: stripeMock.actualizar,
+    },
   }),
 }));
 
@@ -127,11 +149,13 @@ const correos = vi.hoisted(() => ({
   pago: vi.fn(async () => ({ ok: true })),
   equipo: vi.fn(async () => ({ ok: true })),
   comision: vi.fn(async () => ({ ok: true })),
+  cancelacion: vi.fn(async () => ({ ok: true })),
 }));
 vi.mock("./correo", () => ({
   correoPagoConfirmado: correos.pago,
   correoVentaEquipo: correos.equipo,
   correoComisionGenerada: correos.comision,
+  correoCancelacionAnticipada: correos.cancelacion,
 }));
 
 import { procesarEventoImt } from "./pedidos";
@@ -193,6 +217,9 @@ beforeEach(() => {
   sesionesStripe.clear();
   sesionesStripe.set("cs_1", sesion());
   vi.clearAllMocks();
+  stripeMock.programadas.clear();
+  stripeMock.crear.mockReset();
+  stripeMock.actualizar.mockReset();
 });
 
 const completado = (id = "evt_1") => evento(id, "checkout.session.completed", { id: "cs_1", metadata: { imt_pedido_id: PEDIDO_ID } });
@@ -418,5 +445,86 @@ describe("eventos ajenos", () => {
     const db = crearDb(tablas);
     await procesarEventoImt(db, evento("evt_e", "checkout.session.expired", { id: "cs_1", metadata: { imt_pedido_id: PEDIDO_ID } }));
     expect(tablas.imt_pedidos[0].estado).toBe("expirado");
+  });
+});
+
+describe("compromiso del contrato mínimo", () => {
+  it("la suscripción mensual queda programada con 3 cobros y se libera después", async () => {
+    await procesarEventoImt(crearDb(tablas), completado());
+    expect(stripeMock.crear).toHaveBeenCalledOnce();
+    expect(stripeMock.crear).toHaveBeenCalledWith({ from_subscription: "sub_1" });
+    expect(stripeMock.actualizar).toHaveBeenCalledOnce();
+    const [id, params] = stripeMock.actualizar.mock.calls[0];
+    expect(id).toBe("sub_sched_1");
+    expect(params).toMatchObject({
+      end_behavior: "release",
+      proration_behavior: "none",
+      phases: [{ start_date: 1_000, items: [{ price: "price_1", quantity: 1 }], duration: { interval: "month", interval_count: 3 } }],
+    });
+  });
+
+  it("un evento repetido no crea otro calendario", async () => {
+    const db = crearDb(tablas);
+    await procesarEventoImt(db, completado("evt_1"));
+    await procesarEventoImt(db, evento("evt_2", "checkout.session.async_payment_succeeded", { id: "cs_1", metadata: { imt_pedido_id: PEDIDO_ID } }));
+    expect(stripeMock.crear).toHaveBeenCalledOnce();
+  });
+
+  it("el plan anual no programa nada", async () => {
+    tablas.imt_pedidos = [pedidoBase({ periodo: "anual", importe_cop: 39_000_000 })];
+    sesionesStripe.set("cs_1", sesion({ amount_total: 3_900_000_000, subscription: null, invoice: null, payment_intent: "pi_1" }));
+    await procesarEventoImt(crearDb(tablas), completado());
+    expect(stripeMock.crear).not.toHaveBeenCalled();
+    expect(stripeMock.actualizar).not.toHaveBeenCalled();
+  });
+
+  it("si Stripe falla al programar, el pago queda guardado y el reintento termina el trabajo", async () => {
+    const db = crearDb(tablas);
+    stripeMock.crear.mockRejectedValueOnce(new Error("stripe caído"));
+    await expect(procesarEventoImt(db, completado())).rejects.toThrow(/stripe caído/);
+    expect(tablas.imt_pedidos[0].estado).toBe("pagado");
+    expect(stripeMock.actualizar).not.toHaveBeenCalled();
+
+    const r = await procesarEventoImt(db, completado());
+    expect(r).toBe("ya_pagado");
+    expect(stripeMock.actualizar).toHaveBeenCalledOnce();
+    expect(tablas.imt_comisiones).toHaveLength(1);
+    expect(correos.pago).toHaveBeenCalledOnce();
+  });
+});
+
+describe("reintentos del plan anual", () => {
+  it("un segundo evento del mismo pago anual no duplica el cobro ni la comisión", async () => {
+    tablas.imt_pedidos = [pedidoBase({ periodo: "anual", importe_cop: 39_000_000 })];
+    sesionesStripe.set("cs_1", sesion({ amount_total: 3_900_000_000, subscription: null, invoice: null, payment_intent: "pi_1" }));
+    const db = crearDb(tablas);
+    await procesarEventoImt(db, completado("evt_1"));
+    await procesarEventoImt(db, evento("evt_2", "checkout.session.async_payment_succeeded", { id: "cs_1", metadata: { imt_pedido_id: PEDIDO_ID } }));
+    expect(tablas.imt_cobros).toHaveLength(1);
+    expect(tablas.imt_comisiones).toHaveLength(1);
+    expect(correos.pago).toHaveBeenCalledOnce();
+  });
+});
+
+describe("cancelación de la suscripción", () => {
+  const cancelacion = (id = "evt_c") =>
+    evento(id, "customer.subscription.deleted", { id: "sub_1", metadata: { imt_pedido_id: PEDIDO_ID } });
+
+  it("avisa al equipo si cancelan antes de cumplir el mínimo", async () => {
+    const db = crearDb(tablas);
+    await procesarEventoImt(db, completado());
+    const r = await procesarEventoImt(db, cancelacion());
+    expect(r).toBe("cancelada_antes_del_minimo");
+    expect(tablas.imt_pedidos[0].suscripcion_estado).toBe("cancelada");
+    expect(correos.cancelacion).toHaveBeenCalledOnce();
+  });
+
+  it("no avisa si el mínimo ya se cumplió", async () => {
+    const db = crearDb(tablas);
+    await procesarEventoImt(db, completado());
+    tablas.imt_pedidos[0].minimo_hasta = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+    const r = await procesarEventoImt(db, cancelacion());
+    expect(r).toBe("suscripcion_cancelada");
+    expect(correos.cancelacion).not.toHaveBeenCalled();
   });
 });
