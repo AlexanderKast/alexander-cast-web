@@ -188,7 +188,10 @@ export function PlansGrid() {
                   <span className="text-imt-muted">/mes · COP</span>
                 </p>
                 {billing === "anual" ? (
-                  <p className="mt-1 animate-in text-xs text-imt-muted line-through fade-in duration-500">{formatCop(plan.priceCop)}/mes</p>
+                  <p className="mt-1 animate-in text-xs text-imt-muted fade-in duration-500">
+                    <span className="line-through">{formatCop(plan.priceCop)}/mes</span> · Pago anual único de{" "}
+                    {formatCop(plan.priceCop * 10)}
+                  </p>
                 ) : null}
 
                 <ul className="mt-6 space-y-3 border-t border-imt-border pt-6 sm:mt-8 sm:pt-8">
@@ -202,12 +205,19 @@ export function PlansGrid() {
                 <p className="mt-6 flex-1 text-pretty leading-relaxed text-imt-muted">{plan.description}</p>
 
                 <Link
-                  href={diagnosticoHref(plan.id)}
+                  href={`/contratar?plan=${plan.id}&periodo=${billing}`}
                   className={buttonClasses(plan.featured || isRecommended ? "primary" : "secondary", "lg", "mt-8 w-full sm:mt-10")}
+                  aria-label={`Contratar plan ${plan.name} ${billing}`}
+                >
+                  Contratar {billing === "anual" ? "plan anual" : "plan mensual"}
+                  <ArrowRight className="size-4" aria-hidden />
+                </Link>
+                <Link
+                  href={diagnosticoHref(plan.id)}
+                  className="mt-3 inline-flex min-h-11 items-center justify-center text-sm text-imt-muted underline underline-offset-4 transition-colors hover:text-imt-text"
                   aria-label={`Agenda tu diagnóstico — plan ${plan.name}`}
                 >
-                  Agenda tu diagnóstico
-                  <ArrowRight className="size-4" aria-hidden />
+                  ¿Prefieres hablar antes? Agenda tu diagnóstico
                 </Link>
               </div>
             </li>

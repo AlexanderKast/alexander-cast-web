@@ -10,6 +10,9 @@ export const AC_ACTIVITY_TYPES = [
   "consultation_status_changed",
   "consultation_assigned",
   "contact_read",
+  "imt_comision_pagada",
+  "imt_comision_anulada",
+  "imt_referidor_estado",
 ] as const;
 
 export type AcActivityType = (typeof AC_ACTIVITY_TYPES)[number];
