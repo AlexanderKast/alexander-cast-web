@@ -3,7 +3,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { baseUrl } from "@/lib/comunidad/url";
 import { correoReferidor } from "./correo";
 import { COMISION_PCT, generarCodigo, type ReferidorInput } from "./pagos";
-import { escaparLike } from "./portal-utils";
 
 export function enlaceReferido(codigo: string, base: string = baseUrl()): string {
   return `${base}/r/${codigo}`;
@@ -26,10 +25,12 @@ export async function registrarReferidor(
   input: ReferidorInput,
   base: string = baseUrl(),
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  // Igualdad exacta sobre el correo normalizado: nunca patrones (LIKE/ilike y su alias `*` en PostgREST).
+  const email = input.email.trim().toLowerCase();
   const { data: existente } = await db
     .from("imt_referidores")
     .select("id, codigo, token_panel, nombre, email")
-    .ilike("email", escaparLike(input.email))
+    .eq("email", email)
     .maybeSingle<Fila>();
 
   let fila: Fila | null = existente ?? null;
@@ -41,7 +42,7 @@ export async function registrarReferidor(
         .insert({
           codigo: generarCodigo(input.nombre),
           nombre: input.nombre,
-          email: input.email,
+          email,
           whatsapp: input.whatsapp,
           consentimiento: true,
         })
@@ -57,7 +58,7 @@ export async function registrarReferidor(
         const { data: otro } = await db
           .from("imt_referidores")
           .select("id, codigo, token_panel, nombre, email")
-          .ilike("email", escaparLike(input.email))
+          .eq("email", email)
           .maybeSingle<Fila>();
         if (otro) fila = otro;
       }

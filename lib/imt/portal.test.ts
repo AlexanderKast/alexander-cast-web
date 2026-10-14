@@ -152,15 +152,26 @@ describe("correos con comodines de LIKE", () => {
     expect(tablas.portal_clients).toHaveLength(1);
   });
 
-  it("un correo con % no coincide con nadie por patrón", async () => {
+  it("ningún comodín (%, _ ni el alias * de PostgREST) coincide con otro correo", async () => {
     tablas.portal_client_users = [{ client_id: "cli_x", email: "ana@tienda.co", nombre: "Ana", activo: true }];
-    expect(await reenviarAcceso(crearDb(tablas, wrap(authFalso())), "%@tienda.co")).toBe(false);
-    expect(await reenviarAcceso(crearDb(tablas, wrap(authFalso())), "a_a@tienda.co")).toBe(false);
+    for (const patron of ["%@tienda.co", "a_a@tienda.co", "*@tienda.co", "ana@*.co", "an*@tienda.co", "%", "*"]) {
+      expect(await reenviarAcceso(crearDb(tablas, wrap(authFalso())), patron), patron).toBe(false);
+    }
+    expect(correo.acceso).not.toHaveBeenCalled();
   });
 
-  it("la comparación exacta sigue ignorando mayúsculas (filas antiguas)", async () => {
-    tablas.portal_client_users = [{ client_id: "cli_x", email: "Ana@Tienda.CO", nombre: "Ana", activo: true }];
-    expect(await reenviarAcceso(crearDb(tablas, wrap(authFalso())), "ana@tienda.co")).toBe(true);
+  it("un correo con * tampoco se vincula al portal de otro al aprovisionar", async () => {
+    tablas.portal_client_users = [
+      { client_id: "cli_x", email: "ana@tienda.co", activo: true, portal_clients: { id: "cli_x", slug: "tienda-x", tipo: "imt" } },
+    ];
+    const r = await aprovisionarPortal(crearDb(tablas, wrap(authFalso())), { ...PEDIDO, email: "*@tienda.co" });
+    expect(r.clientId).not.toBe("cli_x");
+    expect(tablas.portal_clients).toHaveLength(1);
+  });
+
+  it("la igualdad es exacta sobre el correo normalizado: mayúsculas y espacios del que pide no importan", async () => {
+    tablas.portal_client_users = [{ client_id: "cli_x", email: "ana@tienda.co", nombre: "Ana", activo: true }];
+    expect(await reenviarAcceso(crearDb(tablas, wrap(authFalso())), "  ANA@Tienda.CO ")).toBe(true);
   });
 });
 
