@@ -1,6 +1,8 @@
 "use server";
 
 import { headers } from "next/headers";
+import { baseUrl } from "@/lib/comunidad/url";
+import { origenPublico } from "@/lib/imt/origen";
 import { referidorSchema } from "@/lib/imt/pagos";
 import { registrarReferidor } from "@/lib/imt/referidos";
 import { clientIp, emailLimiter, formLimiter } from "@/lib/rate-limit";
@@ -27,7 +29,8 @@ export async function registrarReferidorAction(_prev: ReferidoState, formData: F
   // Honeypot: un bot que llena este campo ve "éxito" y no se guarda nada.
   if (formData.get("website")) return { status: "success" };
 
-  const ip = clientIp(await headers());
+  const cabeceras = await headers();
+  const ip = clientIp(cabeceras);
   if (!(await formLimiter(`ref:ip:${ip}`)).success) {
     return { status: "error", message: "Muchos intentos seguidos. Prueba de nuevo en unos minutos." };
   }
@@ -35,7 +38,11 @@ export async function registrarReferidorAction(_prev: ReferidoState, formData: F
     return { status: "error", message: "Ya pediste tu enlace con este correo. Revisa tu bandeja de entrada y spam." };
   }
 
-  const r = await registrarReferidor(createSupabaseServiceRole(), parsed.data);
+  const r = await registrarReferidor(
+    createSupabaseServiceRole(),
+    parsed.data,
+    origenPublico(cabeceras, baseUrl()),
+  );
   if (!r.ok) return { status: "error", message: r.error };
   return { status: "success" };
 }

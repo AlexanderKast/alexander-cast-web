@@ -4,12 +4,12 @@ import { baseUrl } from "@/lib/comunidad/url";
 import { correoReferidor } from "./correo";
 import { COMISION_PCT, generarCodigo, type ReferidorInput } from "./pagos";
 
-export function enlaceReferido(codigo: string): string {
-  return `${baseUrl()}/r/${codigo}`;
+export function enlaceReferido(codigo: string, base: string = baseUrl()): string {
+  return `${base}/r/${codigo}`;
 }
 
-export function enlacePanel(token: string): string {
-  return `${baseUrl()}/referidos/panel/${token}`;
+export function enlacePanel(token: string, base: string = baseUrl()): string {
+  return `${base}/referidos/panel/${token}`;
 }
 
 type Fila = { id: string; codigo: string; token_panel: string; nombre: string; email: string };
@@ -23,6 +23,7 @@ type Fila = { id: string; codigo: string; token_panel: string; nombre: string; e
 export async function registrarReferidor(
   db: SupabaseClient,
   input: ReferidorInput,
+  base: string = baseUrl(),
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const { data: existente } = await db
     .from("imt_referidores")
@@ -66,8 +67,8 @@ export async function registrarReferidor(
   const envio = await correoReferidor({
     to: fila.email,
     nombre: fila.nombre,
-    enlace: enlaceReferido(fila.codigo),
-    panel: enlacePanel(fila.token_panel),
+    enlace: enlaceReferido(fila.codigo, base),
+    panel: enlacePanel(fila.token_panel, base),
     comisionPct: COMISION_PCT,
   });
   if (!envio.ok) {
@@ -85,7 +86,11 @@ export type PanelReferidor = {
 };
 
 /** Datos del panel privado. El token es el único acceso: forma validada antes de llamar. */
-export async function cargarPanel(db: SupabaseClient, token: string): Promise<PanelReferidor | null> {
+export async function cargarPanel(
+  db: SupabaseClient,
+  token: string,
+  base: string = baseUrl(),
+): Promise<PanelReferidor | null> {
   const { data: r } = await db
     .from("imt_referidores")
     .select("id, codigo, nombre, estado")
@@ -127,5 +132,5 @@ export async function cargarPanel(db: SupabaseClient, token: string): Promise<Pa
     ventas: filas.filter((f) => f.estadoPedido === "pagado").length,
   };
 
-  return { referidor: { codigo: r.codigo, nombre: r.nombre, estado: r.estado }, enlace: enlaceReferido(r.codigo), totales, filas };
+  return { referidor: { codigo: r.codigo, nombre: r.nombre, estado: r.estado }, enlace: enlaceReferido(r.codigo, base), totales, filas };
 }
