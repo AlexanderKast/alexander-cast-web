@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { esSlug, esTokenHash, slugify, sufijoSlug } from "./portal-utils";
+import { escaparLike, esSlug, esTokenHash, slugify, sufijoSlug } from "./portal-utils";
 
 describe("slugify", () => {
   it("quita acentos, símbolos y espacios", () => {
@@ -39,5 +39,12 @@ describe("validadores", () => {
     for (const x of ["corto", "a".repeat(300), "a b c d e f g h i j k l m n o p", "<script>alert(1)</script>", undefined]) {
       expect(esTokenHash(x), String(x)).toBe(false);
     }
+  });
+});
+
+describe("escaparLike", () => {
+  it("escapa los comodines de LIKE y la barra", () => {
+    expect(escaparLike("a_b%c\\d@x.co")).toBe("a\\_b\\%c\\\\d@x.co");
+    expect(escaparLike("ana@tienda.co")).toBe("ana@tienda.co");
   });
 });

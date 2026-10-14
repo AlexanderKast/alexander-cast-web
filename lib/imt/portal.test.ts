@@ -141,6 +141,29 @@ describe("aprovisionarPortal", () => {
   });
 });
 
+describe("correos con comodines de LIKE", () => {
+  it("un correo con guion bajo NO se vincula al portal de otro correo parecido", async () => {
+    tablas.portal_client_users = [
+      { client_id: "cli_x", email: "axb@tienda.co", activo: true, portal_clients: { id: "cli_x", slug: "tienda-x", tipo: "imt" } },
+    ];
+    const r = await aprovisionarPortal(crearDb(tablas, wrap(authFalso())), { ...PEDIDO, email: "a_b@tienda.co" });
+    expect(r.clientId).not.toBe("cli_x");
+    expect(r.acceso).not.toBeNull();
+    expect(tablas.portal_clients).toHaveLength(1);
+  });
+
+  it("un correo con % no coincide con nadie por patrón", async () => {
+    tablas.portal_client_users = [{ client_id: "cli_x", email: "ana@tienda.co", nombre: "Ana", activo: true }];
+    expect(await reenviarAcceso(crearDb(tablas, wrap(authFalso())), "%@tienda.co")).toBe(false);
+    expect(await reenviarAcceso(crearDb(tablas, wrap(authFalso())), "a_a@tienda.co")).toBe(false);
+  });
+
+  it("la comparación exacta sigue ignorando mayúsculas (filas antiguas)", async () => {
+    tablas.portal_client_users = [{ client_id: "cli_x", email: "Ana@Tienda.CO", nombre: "Ana", activo: true }];
+    expect(await reenviarAcceso(crearDb(tablas, wrap(authFalso())), "ana@tienda.co")).toBe(true);
+  });
+});
+
 describe("reenviarAcceso", () => {
   it("un correo sin portal devuelve false y no toca auth ni envía nada", async () => {
     const auth = authFalso();

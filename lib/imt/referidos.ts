@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { baseUrl } from "@/lib/comunidad/url";
 import { correoReferidor } from "./correo";
 import { COMISION_PCT, generarCodigo, type ReferidorInput } from "./pagos";
+import { escaparLike } from "./portal-utils";
 
 export function enlaceReferido(codigo: string, base: string = baseUrl()): string {
   return `${base}/r/${codigo}`;
@@ -28,7 +29,7 @@ export async function registrarReferidor(
   const { data: existente } = await db
     .from("imt_referidores")
     .select("id, codigo, token_panel, nombre, email")
-    .ilike("email", input.email)
+    .ilike("email", escaparLike(input.email))
     .maybeSingle<Fila>();
 
   let fila: Fila | null = existente ?? null;
@@ -56,7 +57,7 @@ export async function registrarReferidor(
         const { data: otro } = await db
           .from("imt_referidores")
           .select("id, codigo, token_panel, nombre, email")
-          .ilike("email", input.email)
+          .ilike("email", escaparLike(input.email))
           .maybeSingle<Fila>();
         if (otro) fila = otro;
       }

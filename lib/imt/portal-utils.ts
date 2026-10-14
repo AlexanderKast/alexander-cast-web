@@ -53,3 +53,11 @@ export type TipoToken = (typeof TIPOS_TOKEN)[number];
 export function esTipoToken(valor: unknown): valor is TipoToken {
   return typeof valor === "string" && (TIPOS_TOKEN as readonly string[]).includes(valor);
 }
+
+/**
+ * Escapa los comodines de LIKE (`%`, `_`) y la barra para comparar un correo con `ilike` como
+ * igualdad EXACTA sin distinguir mayúsculas. Sin esto, "a_b@x.co" coincidiría con "axb@x.co".
+ */
+export function escaparLike(valor: string): string {
+  return valor.replace(/[\\%_]/g, (c) => `\\${c}`);
+}

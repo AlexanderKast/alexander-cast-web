@@ -54,7 +54,17 @@ class Consulta implements PromiseLike<Resultado> {
     return this;
   }
   ilike(c: string, v: string) {
-    this.filtros.push((f) => String(f[c]).toLowerCase() === v.toLowerCase());
+    // Semántica real de LIKE: % = cualquier cosa, _ = un carácter, \\ escapa el siguiente.
+    let re = "";
+    for (let i = 0; i < v.length; i++) {
+      const ch = v[i];
+      if (ch === "\\" && i + 1 < v.length) re += v[++i].replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      else if (ch === "%") re += ".*";
+      else if (ch === "_") re += ".";
+      else re += ch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+    const patron = new RegExp(`^${re}$`, "i");
+    this.filtros.push((f) => patron.test(String(f[c])));
     return this;
   }
   not(c: string, _op: string, v: unknown) {

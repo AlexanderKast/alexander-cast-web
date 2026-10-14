@@ -4,7 +4,7 @@ import { baseUrl } from "@/lib/comunidad/url";
 import { correoAccesoPortal } from "./correo";
 import type { PlanId } from "@/content/imt";
 import type { Periodo } from "./pagos";
-import { esTipoToken, slugify, sufijoSlug, type TipoToken } from "./portal-utils";
+import { escaparLike, esTipoToken, slugify, sufijoSlug, type TipoToken } from "./portal-utils";
 import { getImtStripe } from "./stripe";
 
 /*
@@ -88,7 +88,7 @@ export async function aprovisionarPortal(
   const { data: previos, error: errorPrevios } = await db
     .from("portal_client_users")
     .select("client_id, portal_clients(id, slug, tipo)")
-    .ilike("email", email)
+    .ilike("email", escaparLike(email))
     .eq("activo", true);
   if (errorPrevios) throw new Error(`No se pudo buscar el portal de ${email}: ${errorPrevios.message}`);
 
@@ -151,7 +151,7 @@ export async function reenviarAcceso(db: SupabaseClient, emailCrudo: string, bas
   const { data, error } = await db
     .from("portal_client_users")
     .select("nombre")
-    .ilike("email", email)
+    .ilike("email", escaparLike(email))
     .eq("activo", true)
     .limit(1);
   if (error) throw new Error(`No se pudo comprobar el acceso de ${email}: ${error.message}`);
