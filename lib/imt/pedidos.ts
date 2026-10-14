@@ -50,6 +50,7 @@ export async function crearCheckout(
   db: SupabaseClient,
   input: CheckoutInput,
   refCodigo: string | null,
+  base: string = baseUrl(),
 ): Promise<{ url: string; pedidoId: string }> {
   const referidor = await buscarReferidor(db, refCodigo);
   const importe = importeCop(input.plan, input.periodo);
@@ -77,7 +78,6 @@ export async function crearCheckout(
 
   const nombrePlan = planName(input.plan);
   const mensual = input.periodo === "mensual";
-  const base = baseUrl();
   const metadata = { imt_pedido_id: pedido.id, plan: input.plan, periodo: input.periodo };
 
   try {
@@ -232,7 +232,11 @@ async function esDeImt(db: SupabaseClient, evento: Stripe.Event): Promise<boolea
  * falló se reprocesa (los manejadores son seguros de repetir).
  * Lanza si algo falla para que el endpoint responda 500 y Stripe reintente.
  */
-export async function procesarEventoImt(db: SupabaseClient, evento: Stripe.Event): Promise<string> {
+export async function procesarEventoImt(
+  db: SupabaseClient,
+  evento: Stripe.Event,
+  base: string = baseUrl(),
+): Promise<string> {
   // La cuenta de Stripe puede ser compartida con otras apps: lo que no es de IMT
   // se descarta ANTES de guardarlo, para no copiar datos de clientes ajenos aquí.
   if (!(await esDeImt(db, evento))) return "ignorado:ajeno";
@@ -265,7 +269,7 @@ export async function procesarEventoImt(db: SupabaseClient, evento: Stripe.Event
   }
 
   try {
-    const resultado = await despachar(db, evento);
+    const resultado = await despachar(db, evento, base);
     await db
       .from("imt_eventos_stripe")
       .update({
@@ -282,12 +286,12 @@ export async function procesarEventoImt(db: SupabaseClient, evento: Stripe.Event
   }
 }
 
-async function despachar(db: SupabaseClient, evento: Stripe.Event): Promise<string> {
+async function despachar(db: SupabaseClient, evento: Stripe.Event, base: string): Promise<string> {
   const obj = evento.data.object;
   switch (evento.type) {
     case "checkout.session.completed":
     case "checkout.session.async_payment_succeeded":
-      return sesionPagada(db, idDe(obj));
+      return sesionPagada(db, idDe(obj), base);
     case "checkout.session.async_payment_failed":
       return cerrarPedidoPendiente(db, pedidoIdDe(obj), "fallido");
     case "checkout.session.expired":
@@ -335,7 +339,7 @@ async function cambiarSuscripcion(
  * El pago se confirma consultando la sesión a Stripe, no confiando en el
  * cuerpo del evento, y se verifica que importe y moneda coincidan con el pedido.
  */
-async function sesionPagada(db: SupabaseClient, sesionId: string | null): Promise<string> {
+async function sesionPagada(db: SupabaseClient, sesionId: string | null, base: string): Promise<string> {
   if (!sesionId) throw new Error("Evento de sesión sin id");
   const sesion = await getImtStripe().checkout.sessions.retrieve(sesionId);
 
@@ -379,7 +383,7 @@ async function sesionPagada(db: SupabaseClient, sesionId: string | null): Promis
   await registrarCobro(db, pedido.id, idDe(sesion.invoice), pedido.importe_cop, ahora);
   const comision = await generarComision(db, pedido);
   await avisar(pedido, comision);
-  if (comision) await avisarReferidor(db, pedido.id);
+  if (comision) await avisarReferidor(db, pedido.id, base);
   return comision ? "pagado_con_comision" : "pagado";
 }
 
@@ -483,7 +487,7 @@ async function avisar(pedido: PedidoFila, comision: { montoCop: number } | null)
 }
 
 /** Aviso al referidor. Separado porque necesita su token; se llama desde generarComision. */
-export async function avisarReferidor(db: SupabaseClient, pedidoId: string): Promise<void> {
+export async function avisarReferidor(db: SupabaseClient, pedidoId: string, base: string = baseUrl()): Promise<void> {
   try {
     const { data } = await db
       .from("imt_comisiones")
@@ -496,7 +500,7 @@ export async function avisarReferidor(db: SupabaseClient, pedidoId: string): Pro
       to: r.email,
       nombre: r.nombre,
       montoCop: data.monto_cop,
-      panel: `${baseUrl()}/referidos/panel/${r.token_panel}`,
+      panel: `${base}/referidos/panel/${r.token_panel}`,
     });
   } catch (e) {
     console.error("[imt-pagos] aviso al referidor falló:", e);

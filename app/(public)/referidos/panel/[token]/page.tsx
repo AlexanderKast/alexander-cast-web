@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { CopiarEnlace } from "@/components/imt/pagos/CopiarEnlace";
 import { Eyebrow } from "@/components/imt/ui/Eyebrow";
 import { formatCop, planName, isPlanId } from "@/content/imt";
+import { baseUrl } from "@/lib/comunidad/url";
+import { origenPublico } from "@/lib/imt/origen";
 import { esTokenPanel } from "@/lib/imt/pagos";
 import { cargarPanel } from "@/lib/imt/referidos";
 import { buildMetadata } from "@/lib/seo";
@@ -34,7 +37,7 @@ export default async function PanelReferidorPage({ params }: { params: Promise<{
   const { token } = await params;
   if (!esTokenPanel(token)) notFound();
 
-  const panel = await cargarPanel(createSupabaseServiceRole(), token);
+  const panel = await cargarPanel(createSupabaseServiceRole(), token, origenPublico(await headers(), baseUrl()));
   if (!panel) notFound();
 
   const { referidor, enlace, totales, filas } = panel;

@@ -2,6 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { checkoutSchema, COOKIE_REFERIDO } from "@/lib/imt/pagos";
 import { crearCheckout, ErrorCheckout } from "@/lib/imt/pedidos";
 import { imtStripeConfigurado } from "@/lib/imt/stripe";
+import { baseUrl } from "@/lib/comunidad/url";
+import { origenPublico } from "@/lib/imt/origen";
 import { clientIp, emailLimiter, formLimiter } from "@/lib/rate-limit";
 import { isSameOriginStrict } from "@/lib/same-origin";
 import { createSupabaseServiceRole } from "@/lib/supabase/server";
@@ -46,7 +48,12 @@ export async function POST(req: NextRequest) {
 
   try {
     const refCodigo = req.cookies.get(COOKIE_REFERIDO)?.value ?? null;
-    const { url } = await crearCheckout(createSupabaseServiceRole(), parsed.data, refCodigo);
+    const { url } = await crearCheckout(
+      createSupabaseServiceRole(),
+      parsed.data,
+      refCodigo,
+      origenPublico(req.headers, baseUrl()),
+    );
     return NextResponse.json({ url });
   } catch (e) {
     if (e instanceof ErrorCheckout) return NextResponse.json({ error: e.message }, { status: e.estado });
