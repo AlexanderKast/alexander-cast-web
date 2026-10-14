@@ -178,6 +178,39 @@ async function pedidoPorId(db: SupabaseClient, id: string): Promise<PedidoFila |
   return data ?? null;
 }
 
+const TIPOS_IMT = new Set([
+  "checkout.session.completed",
+  "checkout.session.async_payment_succeeded",
+  "checkout.session.async_payment_failed",
+  "checkout.session.expired",
+  "invoice.paid",
+  "invoice.payment_failed",
+  "customer.subscription.deleted",
+  "charge.refunded",
+]);
+
+/**
+ * ¿El evento es de un pedido de IMT? Sesiones, facturas y suscripciones lo dicen
+ * en su metadata. Un reembolso no la trae: se reconoce por su payment_intent o cliente.
+ */
+async function esDeImt(db: SupabaseClient, evento: Stripe.Event): Promise<boolean> {
+  if (!TIPOS_IMT.has(evento.type)) return false;
+  const obj = evento.data.object;
+  if (evento.type !== "charge.refunded") return pedidoIdDe(obj) !== null;
+
+  const pi = idDe(leer(obj, "payment_intent"));
+  const cliente = idDe(leer(obj, "customer"));
+  for (const [columna, valor] of [
+    ["stripe_payment_intent_id", pi],
+    ["stripe_customer_id", cliente],
+  ] as const) {
+    if (!valor) continue;
+    const { data } = await db.from("imt_pedidos").select("id").eq(columna, valor).limit(1);
+    if (Array.isArray(data) && data.length > 0) return true;
+  }
+  return false;
+}
+
 /**
  * Procesa un evento YA verificado (firma). Idempotente: el id del evento se
  * guarda primero; un reintento de un evento procesado no hace nada, y uno que
@@ -185,6 +218,10 @@ async function pedidoPorId(db: SupabaseClient, id: string): Promise<PedidoFila |
  * Lanza si algo falla para que el endpoint responda 500 y Stripe reintente.
  */
 export async function procesarEventoImt(db: SupabaseClient, evento: Stripe.Event): Promise<string> {
+  // La cuenta de Stripe puede ser compartida con otras apps: lo que no es de IMT
+  // se descarta ANTES de guardarlo, para no copiar datos de clientes ajenos aquí.
+  if (!(await esDeImt(db, evento))) return "ignorado:ajeno";
+
   const { data: guardado, error: errorGuardar } = await db
     .from("imt_eventos_stripe")
     .insert({

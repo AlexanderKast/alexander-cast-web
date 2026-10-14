@@ -230,7 +230,7 @@ describe("pago confirmado", () => {
   it("otro evento sobre un pedido ya pagado (async_payment_succeeded) no repite comisión ni correos", async () => {
     const db = crearDb(tablas);
     await procesarEventoImt(db, completado("evt_1"));
-    const r = await procesarEventoImt(db, evento("evt_2", "checkout.session.async_payment_succeeded", { id: "cs_1" }));
+    const r = await procesarEventoImt(db, evento("evt_2", "checkout.session.async_payment_succeeded", { id: "cs_1", metadata: { imt_pedido_id: PEDIDO_ID } }));
     expect(r).toBe("ya_pagado");
     expect(tablas.imt_comisiones).toHaveLength(1);
     expect(correos.pago).toHaveBeenCalledOnce();
@@ -346,7 +346,7 @@ describe("renovaciones y reembolsos", () => {
   it("un reembolso parcial no toca el pedido", async () => {
     const db = crearDb(tablas);
     await procesarEventoImt(db, completado());
-    const r = await procesarEventoImt(db, evento("evt_2", "charge.refunded", { id: "ch_1", refunded: false, payment_intent: "pi_1", amount: 1, created: 1 }));
+    const r = await procesarEventoImt(db, evento("evt_2", "charge.refunded", { id: "ch_1", refunded: false, payment_intent: "pi_1", customer: "cus_1", amount: 1, created: 1 }));
     expect(r).toBe("ignorado:reembolso_parcial");
     expect(tablas.imt_pedidos[0].estado).toBe("pagado");
   });
@@ -356,13 +356,25 @@ describe("eventos ajenos", () => {
   it("ignora sesiones sin metadata de IMT (otras apps de la misma cuenta de Stripe)", async () => {
     sesionesStripe.set("cs_x", sesion({ id: "cs_x", metadata: {} }));
     const r = await procesarEventoImt(crearDb(tablas), evento("evt_x", "checkout.session.completed", { id: "cs_x" }));
-    expect(r).toBe("ignorado:sin_imt");
+    expect(r).toBe("ignorado:ajeno");
     expect(tablas.imt_pedidos[0].estado).toBe("pendiente");
+    // Un evento de otra app no se copia a la base de IMT.
+    expect(tablas.imt_eventos_stripe ?? []).toHaveLength(0);
+  });
+
+  it("ignora un reembolso de un cliente que no es de IMT y no lo guarda", async () => {
+    const r = await procesarEventoImt(
+      crearDb(tablas),
+      evento("evt_z", "charge.refunded", { id: "ch_9", refunded: true, payment_intent: "pi_otro", customer: "cus_otro", amount: 1, created: 1 }),
+    );
+    expect(r).toBe("ignorado:ajeno");
+    expect(tablas.imt_eventos_stripe ?? []).toHaveLength(0);
   });
 
   it("ignora tipos que no maneja", async () => {
     const r = await procesarEventoImt(crearDb(tablas), evento("evt_y", "customer.created", { id: "cus_9" }));
-    expect(r).toBe("ignorado:tipo");
+    expect(r).toBe("ignorado:ajeno");
+    expect(tablas.imt_eventos_stripe ?? []).toHaveLength(0);
   });
 
   it("marca expirado solo si seguía pendiente", async () => {
