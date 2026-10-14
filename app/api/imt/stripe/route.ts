@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { procesarEventoImt } from "@/lib/imt/pedidos";
+import { baseUrl } from "@/lib/comunidad/url";
+import { origenPublico } from "@/lib/imt/origen";
 import { getImtStripe, imtWebhookSecret } from "@/lib/imt/stripe";
 import { createSupabaseServiceRole } from "@/lib/supabase/server";
 
@@ -34,7 +36,11 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const resultado = await procesarEventoImt(createSupabaseServiceRole(), evento);
+    const resultado = await procesarEventoImt(
+      createSupabaseServiceRole(),
+      evento,
+      origenPublico(req.headers, baseUrl()),
+    );
     return NextResponse.json({ received: true, resultado });
   } catch (e) {
     console.error("[imt-pagos] error procesando evento de Stripe:", evento.id, evento.type, e);
