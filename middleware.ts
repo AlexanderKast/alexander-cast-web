@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { COOKIE_REFERIDO, normalizarCodigo, VENTANA_REFERIDO_DIAS } from "@/lib/imt/pagos";
 
 const PUBLIC_ADMIN_ROUTES = [
   "/admin/login",
@@ -12,7 +13,20 @@ export async function middleware(req: NextRequest) {
 
   let response = NextResponse.next({ request: { headers: new Headers(req.headers) } });
 
-  if (!pathname.startsWith("/admin")) return response;
+  if (!pathname.startsWith("/admin")) {
+    // Referidos IA Master Tech: cualquier página con ?ref=CODIGO guarda la atribución 30 días.
+    const ref = normalizarCodigo(req.nextUrl.searchParams.get("ref"));
+    if (ref && req.cookies.get(COOKIE_REFERIDO)?.value !== ref) {
+      response.cookies.set(COOKIE_REFERIDO, ref, {
+        maxAge: VENTANA_REFERIDO_DIAS * 24 * 3600,
+        path: "/",
+        sameSite: "lax",
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+      });
+    }
+    return response;
+  }
 
   const isPublic = PUBLIC_ADMIN_ROUTES.some((r) => pathname.startsWith(r));
 

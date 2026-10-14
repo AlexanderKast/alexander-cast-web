@@ -13,6 +13,9 @@ const ACTION_LABEL: Record<string, string> = {
   "ac.consultation_status_changed": "Cambio estado consultoría",
   "ac.consultation_assigned": "Consultoría asignada",
   "ac.contact_read": "Mensaje leído",
+  "ac.imt_comision_pagada": "Comisión de referido pagada",
+  "ac.imt_comision_anulada": "Comisión de referido anulada",
+  "ac.imt_referidor_estado": "Referidor pausado/reactivado",
 };
 
 export default async function ActividadPage() {
