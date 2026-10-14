@@ -151,3 +151,51 @@ export function correoComisionGenerada(p: {
     ),
   });
 }
+
+/** Aviso interno: alguien canceló la suscripción antes de cumplir el contrato mínimo. */
+export function correoCancelacionAnticipada(p: {
+  empresa: string;
+  nombre: string;
+  email: string;
+  whatsapp: string;
+  plan: PlanId;
+  minimoHasta: Date;
+}): Promise<Resultado> {
+  const to = process.env.DIAGNOSTICO_NOTIFY_TO;
+  if (!to) return Promise.resolve({ ok: false, error: "Falta DIAGNOSTICO_NOTIFY_TO en el entorno" });
+  const hasta = p.minimoHasta.toLocaleDateString("es-CO", { dateStyle: "long", timeZone: "America/Bogota" });
+  return enviar({
+    to,
+    replyTo: p.email,
+    subject: `Cancelación antes del mínimo: ${p.empresa} (${planName(p.plan)})`,
+    html: envoltorio(
+      "Cancelación antes del contrato mínimo",
+      `<p style="font-size:15px;line-height:1.6;"><strong>${escapar(p.empresa)}</strong> canceló su suscripción del plan <strong>${escapar(planName(p.plan))}</strong> antes de cumplir los ${MESES_MINIMOS} meses (el mínimo vencía el ${escapar(hasta)}).</p>
+       <p style="font-size:14px;line-height:1.6;color:#555;">Contacto: ${escapar(p.nombre)} · ${escapar(p.email)} · ${escapar(p.whatsapp)}. Revisa si corresponde cobrar lo pendiente del mínimo.</p>`,
+    ),
+  });
+}
+
+/** Enlace mágico al portal de clientes. Mismo diseño de correo que el acceso de la comunidad. */
+export function correoAccesoPortal(p: { to: string; nombre: string; enlace: string; bienvenida: boolean }): Promise<Resultado> {
+  const saludo = p.nombre ? `Hola ${escapar(p.nombre)},` : "Hola,";
+  const intro = p.bienvenida
+    ? "Recibimos tu pago y ya creamos tu <strong>portal de cliente de IA Master Tech</strong>. Ahí ves tu plan, tus cobros y gestionas tu tarjeta. Sin contraseña: toca el botón y entras."
+    : "Este es tu acceso al <strong>portal de cliente de IA Master Tech</strong>. Sin contraseña: toca el botón y entras.";
+  const html = `
+    <div style="font-family:Arial,sans-serif;color:#0A0A0A;max-width:520px;margin:0 auto;padding:24px;">
+      <h1 style="font-size:22px;margin:0 0 16px;">${saludo}</h1>
+      <p style="font-size:16px;line-height:1.6;">${intro}</p>
+      <p style="margin:28px 0;">
+        <a href="${escapar(p.enlace)}" style="background:#A3E635;color:#050705;padding:14px 24px;border-radius:999px;text-decoration:none;font-weight:700;display:inline-block;">Entrar a mi portal</a>
+      </p>
+      <p style="font-size:14px;line-height:1.6;color:#555;">El enlace funciona una sola vez y vence en 1 hora. Si caduca, entra a <a href="${escapar(new URL(p.enlace).origin)}/portal/login">${escapar(new URL(p.enlace).host)}/portal/login</a> y pide otro con tu correo.</p>
+      <p style="font-size:14px;line-height:1.6;color:#555;">Si no esperabas este correo, ignóralo: no se crea ni se cambia nada.</p>
+      <p style="font-size:16px;margin-top:24px;">Alexander Cast</p>
+    </div>`;
+  return enviar({
+    to: p.to,
+    subject: p.bienvenida ? "Tu portal de IA Master Tech está listo" : "Tu acceso al portal de IA Master Tech",
+    html,
+  });
+}

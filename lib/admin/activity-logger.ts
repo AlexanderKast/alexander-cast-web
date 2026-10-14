@@ -13,6 +13,7 @@ export const AC_ACTIVITY_TYPES = [
   "imt_comision_pagada",
   "imt_comision_anulada",
   "imt_referidor_estado",
+  "imt_acceso_reenviado",
 ] as const;
 
 export type AcActivityType = (typeof AC_ACTIVITY_TYPES)[number];
