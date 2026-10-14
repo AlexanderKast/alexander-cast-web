@@ -43,3 +43,20 @@ El webhook ignora cualquier sesión, factura o suscripción sin `metadata.imt_pe
 ## Pruebas
 
 `npx vitest run --project unit lib/imt` (reglas de cobro y todo el procesamiento del webhook con una base en memoria).
+
+## Portal de clientes (fase 1)
+
+Al confirmarse el pago, el webhook crea el portal del comprador y le envía un **enlace mágico** (sin contraseña).
+
+- **Creación:** `aprovisionarPortal` (`lib/imt/portal.ts`) crea un `portal_clients` con `tipo = 'imt'`, el usuario de Supabase y su vínculo en `portal_client_users`, y enlaza el pedido (`imt_pedidos.portal_client_id`). Es idempotente: una renovación o un segundo plan reutilizan el portal; un reintento del webhook no duplica nada.
+- **Acceso:** el enlace lo genera `auth.admin.generateLink` y lo envía Resend. Abre `/portal/entrar`, que solo muestra un botón (los escáneres de correo no gastan el token); el POST a `/portal/entrar/confirmar` canjea el token y exige un portal activo. Quien pierda el enlace pide otro en `/portal/login`. Dura 1 hora y es de un solo uso.
+- **Panel del cliente:** `/portal/mi-plan` (plan, contrato mínimo, cobros, botón de tarjeta y facturas). Usa el tema de la comunidad. El portal de agencia (`/portal/[slug]`) no cambia.
+- **Tarjeta y facturas:** `POST /api/portal/facturacion` abre el portal de facturación de Stripe del cliente con sesión. El cliente sale de la sesión, nunca de un dato del navegador.
+- **Admin:** `/admin/imt-pagos` tiene la columna "Portal" con "Reenviar acceso".
+
+### Configuración en Stripe (una sola vez, en la cuenta IA Master Tech)
+1. La clave restringida `IMT_STRIPE_SECRET_KEY` necesita además **Customer portal sessions: Write**.
+2. Dashboard → Configuración → Facturación → **Portal del cliente**: activa "Actualizar método de pago" y "Historial de facturas" y **deja desactivada la cancelación** (hay contrato mínimo de 3 meses). Guarda la configuración.
+3. Opcional: `IMT_STRIPE_PORTAL_CONFIGURATION` con el id `bpc_…` si no quieres usar la configuración por defecto.
+
+Migración: `0026_imt_portal_clientes.sql`.

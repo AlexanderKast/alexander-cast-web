@@ -175,3 +175,27 @@ export function correoCancelacionAnticipada(p: {
     ),
   });
 }
+
+/** Enlace mágico al portal de clientes. Mismo diseño de correo que el acceso de la comunidad. */
+export function correoAccesoPortal(p: { to: string; nombre: string; enlace: string; bienvenida: boolean }): Promise<Resultado> {
+  const saludo = p.nombre ? `Hola ${escapar(p.nombre)},` : "Hola,";
+  const intro = p.bienvenida
+    ? "Recibimos tu pago y ya creamos tu <strong>portal de cliente de IA Master Tech</strong>. Ahí ves tu plan, tus cobros y gestionas tu tarjeta. Sin contraseña: toca el botón y entras."
+    : "Este es tu acceso al <strong>portal de cliente de IA Master Tech</strong>. Sin contraseña: toca el botón y entras.";
+  const html = `
+    <div style="font-family:Arial,sans-serif;color:#0A0A0A;max-width:520px;margin:0 auto;padding:24px;">
+      <h1 style="font-size:22px;margin:0 0 16px;">${saludo}</h1>
+      <p style="font-size:16px;line-height:1.6;">${intro}</p>
+      <p style="margin:28px 0;">
+        <a href="${escapar(p.enlace)}" style="background:#A3E635;color:#050705;padding:14px 24px;border-radius:999px;text-decoration:none;font-weight:700;display:inline-block;">Entrar a mi portal</a>
+      </p>
+      <p style="font-size:14px;line-height:1.6;color:#555;">El enlace funciona una sola vez y vence en 1 hora. Si caduca, entra a <a href="${escapar(new URL(p.enlace).origin)}/portal/login">${escapar(new URL(p.enlace).host)}/portal/login</a> y pide otro con tu correo.</p>
+      <p style="font-size:14px;line-height:1.6;color:#555;">Si no esperabas este correo, ignóralo: no se crea ni se cambia nada.</p>
+      <p style="font-size:16px;margin-top:24px;">Alexander Cast</p>
+    </div>`;
+  return enviar({
+    to: p.to,
+    subject: p.bienvenida ? "Tu portal de IA Master Tech está listo" : "Tu acceso al portal de IA Master Tech",
+    html,
+  });
+}
