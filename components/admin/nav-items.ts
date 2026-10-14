@@ -108,6 +108,8 @@ export const adminNavSections: AdminNavSection[] = [
       { label: "Dashboard", href: "/admin", icono: "LayoutDashboard" },
       { label: "Leads", href: "/admin/leads", icono: "Users" },
       { label: "Suscriptores", href: "/admin/suscriptores", icono: "Mail" },
+      { label: "Pagos de planes", href: "/admin/imt-pagos", icono: "Wallet" },
+      { label: "Referidos", href: "/admin/referidos", icono: "Share2" },
       { label: "Consultorías", href: "/admin/consultorias", icono: "CalendarCheck" },
       { label: "Mensajes", href: "/admin/mensajes", icono: "MessageSquare" },
       { label: "Briefs de marca", href: "/admin/briefs", icono: "ClipboardList" },

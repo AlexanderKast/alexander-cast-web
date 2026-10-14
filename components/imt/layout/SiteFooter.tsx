@@ -27,6 +27,7 @@ const SOCIAL = [
 ];
 
 const LEGAL = [
+  { label: "Programa de referidos", href: "/referidos" },
   { label: "Política de privacidad", href: "/legal/privacidad" },
   { label: "Términos", href: "/legal/terminos" },
 ];
