@@ -3,13 +3,29 @@ import Stripe from "stripe";
 
 let cliente: Stripe | null = null;
 
+/**
+ * Clave secreta de Stripe. Se acepta STRIPE_SECRET_KEY o, si no existe, IMT_STRIPE_SECRET_KEY: comunidad y los planes de
+ * IA Master Tech cobran en la MISMA cuenta de Stripe, así que comparten clave y no hay que duplicarla en Vercel.
+ */
+export function claveStripe(): string | undefined {
+  return process.env.STRIPE_SECRET_KEY || process.env.IMT_STRIPE_SECRET_KEY || undefined;
+}
+
+/**
+ * Secreto de firma del webhook de comunidad. NO se comparte con IMT_STRIPE_WEBHOOK_SECRET: cada endpoint de Stripe tiene
+ * su propio secreto (el de /api/comunidad/stripe es distinto del de /api/imt/stripe).
+ */
+export function secretoWebhookStripe(): string | undefined {
+  return process.env.COMUNIDAD_STRIPE_WEBHOOK_SECRET || process.env.STRIPE_WEBHOOK_SECRET || undefined;
+}
+
 export function stripeConfigurado(): boolean {
-  return Boolean(process.env.STRIPE_SECRET_KEY);
+  return Boolean(claveStripe());
 }
 
 export function getStripe(): Stripe {
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) throw new Error("Falta STRIPE_SECRET_KEY");
+  const key = claveStripe();
+  if (!key) throw new Error("Falta STRIPE_SECRET_KEY (o IMT_STRIPE_SECRET_KEY)");
   cliente ??= new Stripe(key, { maxNetworkRetries: 2, timeout: 20_000 });
   return cliente;
 }

@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getStripe } from "@/lib/comunidad/stripe";
+import { claveStripe, getStripe, secretoWebhookStripe } from "@/lib/comunidad/stripe";
 import { procesarEventoStripe } from "@/lib/comunidad/pedidos";
 
 export const runtime = "nodejs";
@@ -17,8 +17,8 @@ export const dynamic = "force-dynamic";
  * evento queda registrado y se reprocesa; el aprovisionamiento es idempotente).
  */
 export async function POST(req: NextRequest) {
-  const secreto = process.env.STRIPE_WEBHOOK_SECRET;
-  if (!secreto || !process.env.STRIPE_SECRET_KEY) {
+  const secreto = secretoWebhookStripe();
+  if (!secreto || !claveStripe()) {
     return NextResponse.json({ error: "webhook_no_configurado" }, { status: 503 });
   }
 
