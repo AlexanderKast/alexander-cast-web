@@ -8,7 +8,7 @@ Pago de los planes AUTOMATIZA / ACELERA / ESCALA con Stripe Checkout en COP, y p
 |---|---|
 | Mensual | Suscripción Stripe, fee del plan (`content/imt.ts`) |
 | Anual | Pago único = fee x 10 (10 meses pagados, 12 de servicio) |
-| Contrato mínimo | 3 meses. Se guarda `minimo_hasta` en el pedido; **Stripe no impide cancelar antes**, hay que vigilarlo en `/admin/imt-pagos` |
+| Contrato mínimo | 3 meses. Al confirmarse el pago mensual, la suscripción pasa a un **calendario de Stripe con 3 cobros comprometidos** y luego se libera y sigue mes a mes. El checkout lo avisa al cliente. Si alguien cancela antes del tercer mes llega un correo al equipo (`DIAGNOSTICO_NOTIFY_TO`). Stripe no impide que el equipo cancele a mano desde el Dashboard, y no hay portal de cliente: el cliente no puede cancelar solo |
 | Comisión | 10% del PRIMER pago, solo una por pedido |
 | Atribución | Cookie `imt_ref` de 30 días (`/r/CODIGO` o `?ref=CODIGO`) |
 | Antifraude | Sin comisión si el comprador usa el mismo correo del referidor o si el referidor está pausado; reembolso total anula la comisión |
