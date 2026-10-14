@@ -21,6 +21,7 @@ import {
   type CheckoutInput,
   type Periodo,
 } from "./pagos";
+import { aprovisionarPortal, enviarAccesoPortal } from "./portal";
 import { getImtStripe } from "./stripe";
 
 /* ───────────────────────── Checkout ───────────────────────── */
@@ -119,7 +120,12 @@ export async function crearCheckout(
         },
         ...(mensual
           ? { subscription_data: { metadata } }
-          : { payment_intent_data: { metadata } }),
+          : {
+              payment_intent_data: { metadata },
+              // El plan anual también necesita cliente y factura de Stripe para el portal de tarjeta y facturas.
+              customer_creation: "always" as const,
+              invoice_creation: { enabled: true, invoice_data: { metadata } },
+            }),
         success_url: `${base}/contratar/gracias?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${base}/contratar?plan=${input.plan}&periodo=${input.periodo}&cancelado=1`,
       },
@@ -466,6 +472,23 @@ async function sesionPagada(db: SupabaseClient, sesionId: string | null, base: s
 
   await registrarCobro(db, pedido.id, idDe(sesion.invoice), pedido.importe_cop, ahora);
   const comision = await generarComision(db, pedido);
+  // Portal del cliente (idempotente). El enlace de acceso solo sale cuando la persona se acaba de vincular.
+  const portal = await aprovisionarPortal(db, {
+    id: pedido.id,
+    email: pedido.email,
+    nombre: pedido.nombre,
+    empresa: pedido.empresa,
+  });
+  if (portal.acceso) {
+    await enviarAccesoPortal({
+      email: pedido.email,
+      nombre: pedido.nombre,
+      tokenHash: portal.acceso.tokenHash,
+      tipo: portal.acceso.tipo,
+      base,
+      bienvenida: true,
+    });
+  }
   if (primeraVez) {
     await avisar(pedido, comision);
     if (comision) await avisarReferidor(db, pedido.id, base);

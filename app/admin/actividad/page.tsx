@@ -16,6 +16,7 @@ const ACTION_LABEL: Record<string, string> = {
   "ac.imt_comision_pagada": "Comisión de referido pagada",
   "ac.imt_comision_anulada": "Comisión de referido anulada",
   "ac.imt_referidor_estado": "Referidor pausado/reactivado",
+  "ac.imt_acceso_reenviado": "Acceso al portal reenviado",
 };
 
 export default async function ActividadPage() {

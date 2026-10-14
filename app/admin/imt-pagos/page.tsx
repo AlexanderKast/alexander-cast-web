@@ -3,6 +3,7 @@ import { formatCop } from "@/content/imt";
 import { requireAuth } from "@/lib/auth";
 import { puedeGestionarConfiguracion } from "@/lib/proyectos/permisos";
 import { createSupabaseServiceRole } from "@/lib/supabase/server";
+import { reenviarAccesoPortalAdmin } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,7 @@ type Pedido = {
   pagado_at: string | null;
   minimo_hasta: string | null;
   stripe_session_id: string | null;
+  portal_client_id: string | null;
 };
 
 type EventoError = { id: string; created_at: string; tipo: string; error: string | null };
@@ -37,7 +39,7 @@ export default async function PagosImtPage() {
     db
       .from("imt_pedidos")
       .select(
-        "id, created_at, plan, periodo, importe_cop, estado, suscripcion_estado, nombre, empresa, email, whatsapp, ref_codigo, pagado_at, minimo_hasta, stripe_session_id",
+        "id, created_at, plan, periodo, importe_cop, estado, suscripcion_estado, nombre, empresa, email, whatsapp, ref_codigo, pagado_at, minimo_hasta, stripe_session_id, portal_client_id",
       )
       .order("created_at", { ascending: false })
       .limit(200),
@@ -94,6 +96,7 @@ export default async function PagosImtPage() {
               <th className="px-3 py-2">Estado</th>
               <th className="px-3 py-2">Contrato mínimo</th>
               <th className="px-3 py-2">Referido</th>
+              <th className="px-3 py-2">Portal</th>
             </tr>
           </thead>
           <tbody>
@@ -116,6 +119,18 @@ export default async function PagosImtPage() {
                 </td>
                 <td className="px-3 py-2">{p.minimo_hasta ? `hasta ${fecha.format(new Date(p.minimo_hasta))}` : "—"}</td>
                 <td className="px-3 py-2 font-mono text-xs">{p.ref_codigo ?? "—"}</td>
+                <td className="px-3 py-2">
+                  {p.portal_client_id && p.estado === "pagado" ? (
+                    <form action={reenviarAccesoPortalAdmin}>
+                      <input type="hidden" name="id" value={p.id} />
+                      <button type="submit" className="rounded-lg border border-white/20 px-3 py-1 text-xs text-white/80 transition hover:bg-white/10">
+                        Reenviar acceso
+                      </button>
+                    </form>
+                  ) : (
+                    <span className="text-xs text-white/40">{p.estado === "pagado" ? "sin portal" : "—"}</span>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>

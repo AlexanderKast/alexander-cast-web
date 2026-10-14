@@ -12,12 +12,23 @@ export default async function PortalIndexPage() {
 
   // Buscar el cliente asociado a este usuario
   const service = createSupabaseServiceRole();
-  const { data: clientUser } = await service
+  const { data: vinculos } = await service
     .from('portal_client_users')
-    .select('client_id, portal_clients(slug)')
+    .select('client_id, portal_clients(slug, tipo)')
     .eq('auth_user_id', user.id)
-    .eq('activo', true)
-    .single();
+    .eq('activo', true);
+
+  type Cliente = { slug: string; tipo: string };
+  const clientes = ((vinculos ?? []) as unknown as { portal_clients: Cliente | Cliente[] | null }[])
+    .map((v) => (Array.isArray(v.portal_clients) ? v.portal_clients[0] : v.portal_clients))
+    .filter((c): c is Cliente => Boolean(c));
+
+  // Clientes de IA Master Tech: su panel de plan y pagos, con el branding de la comunidad.
+  if (clientes.some((c) => c.tipo === 'imt')) {
+    redirect('/portal/mi-plan');
+  }
+
+  const clientUser = clientes[0];
 
   if (!clientUser) {
     // Usuario autenticado pero sin cliente asignado
@@ -38,8 +49,7 @@ export default async function PortalIndexPage() {
     );
   }
 
-  const portalClients = (clientUser as unknown as { portal_clients: { slug: string } | { slug: string }[] | null }).portal_clients;
-  const slug = Array.isArray(portalClients) ? portalClients[0]?.slug : portalClients?.slug;
+  const slug = clientUser.slug;
   if (slug) {
     redirect(`/portal/${slug}`);
   }

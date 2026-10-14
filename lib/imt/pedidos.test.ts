@@ -2,116 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type Stripe from "stripe";
 
-/* ── Base en memoria con la parte del cliente de Supabase que usa pedidos.ts ── */
-
-type Fila = Record<string, unknown>;
-type Resultado = { data: unknown; error: { code?: string; message: string } | null };
-
-const UNICOS: Record<string, string> = {
-  imt_eventos_stripe: "stripe_event_id",
-  imt_comisiones: "pedido_id",
-  imt_cobros: "stripe_invoice_id",
-};
-
-class Consulta implements PromiseLike<Resultado> {
-  private op: "select" | "insert" | "update" | "upsert" = "select";
-  private payload: Fila = {};
-  private opciones: { onConflict?: string; ignoreDuplicates?: boolean } = {};
-  private filtros: ((f: Fila) => boolean)[] = [];
-  private devolver = false;
-  private tope: number | null = null;
-
-  constructor(
-    private tablas: Record<string, Fila[]>,
-    private tabla: string,
-  ) {}
-
-  insert(p: Fila) {
-    this.op = "insert";
-    this.payload = p;
-    return this;
-  }
-  update(p: Fila) {
-    this.op = "update";
-    this.payload = p;
-    return this;
-  }
-  upsert(p: Fila, o: { onConflict?: string; ignoreDuplicates?: boolean } = {}) {
-    this.op = "upsert";
-    this.payload = p;
-    this.opciones = o;
-    return this;
-  }
-  select() {
-    this.devolver = true;
-    return this;
-  }
-  eq(c: string, v: unknown) {
-    this.filtros.push((f) => f[c] === v);
-    return this;
-  }
-  in(c: string, vs: unknown[]) {
-    this.filtros.push((f) => vs.includes(f[c]));
-    return this;
-  }
-  ilike(c: string, v: string) {
-    this.filtros.push((f) => String(f[c]).toLowerCase() === v.toLowerCase());
-    return this;
-  }
-  order() {
-    return this;
-  }
-  limit(n: number) {
-    this.tope = n;
-    return this;
-  }
-  maybeSingle() {
-    return this.ejecutar(true);
-  }
-  single() {
-    return this.ejecutar(true);
-  }
-  then<A, B>(ok?: (r: Resultado) => A | PromiseLike<A>, fail?: (e: unknown) => B | PromiseLike<B>) {
-    return this.ejecutar(false).then(ok, fail);
-  }
-
-  private async ejecutar(uno: boolean): Promise<Resultado> {
-    const filas = (this.tablas[this.tabla] ??= []);
-    const coincide = (f: Fila) => this.filtros.every((fn) => fn(f));
-    const unico = UNICOS[this.tabla];
-
-    if (this.op === "insert" || this.op === "upsert") {
-      const clave = this.op === "upsert" ? (this.opciones.onConflict ?? unico) : unico;
-      const choque = clave && this.payload[clave] != null && filas.some((f) => f[clave] === this.payload[clave]);
-      if (choque) {
-        if (this.op === "upsert" && this.opciones.ignoreDuplicates) return { data: null, error: null };
-        return { data: null, error: { code: "23505", message: "duplicate key" } };
-      }
-      // Los defaults de estado que pone la migración 0025.
-      const porDefecto: Record<string, Fila> = {
-        imt_eventos_stripe: { estado: "recibido" },
-        imt_comisiones: { estado: "pendiente" },
-      };
-      const fila = { id: crypto.randomUUID(), ...porDefecto[this.tabla], ...this.payload };
-      filas.push(fila);
-      return { data: this.devolver ? (uno ? fila : [fila]) : null, error: null };
-    }
-
-    if (this.op === "update") {
-      const tocadas = filas.filter(coincide);
-      tocadas.forEach((f) => Object.assign(f, this.payload));
-      return { data: this.devolver ? (uno ? (tocadas[0] ?? null) : tocadas) : null, error: null };
-    }
-
-    let sel = filas.filter(coincide);
-    if (this.tope !== null) sel = sel.slice(0, this.tope);
-    return { data: uno ? (sel[0] ?? null) : sel, error: null };
-  }
-}
-
-function crearDb(tablas: Record<string, Fila[]>): SupabaseClient {
-  return { from: (t: string) => new Consulta(tablas, t) } as unknown as SupabaseClient;
-}
+import { crearDb, type Fila } from "../../tests/helpers/fake-supabase";
 
 /* ── Mocks de Stripe y correo ── */
 
@@ -156,6 +47,15 @@ vi.mock("./correo", () => ({
   correoVentaEquipo: correos.equipo,
   correoComisionGenerada: correos.comision,
   correoCancelacionAnticipada: correos.cancelacion,
+}));
+
+const portalMock = vi.hoisted(() => ({
+  aprovisionar: vi.fn(),
+  enviarAcceso: vi.fn(async () => true),
+}));
+vi.mock("./portal", () => ({
+  aprovisionarPortal: portalMock.aprovisionar,
+  enviarAccesoPortal: portalMock.enviarAcceso,
 }));
 
 import { procesarEventoImt } from "./pedidos";
@@ -217,6 +117,13 @@ beforeEach(() => {
   sesionesStripe.clear();
   sesionesStripe.set("cs_1", sesion());
   vi.clearAllMocks();
+  portalMock.aprovisionar.mockReset();
+  portalMock.aprovisionar.mockResolvedValue({
+    clientId: "cli_1",
+    slug: "tienda-demo",
+    acceso: { tokenHash: "h".repeat(40), tipo: "magiclink" },
+  });
+  portalMock.enviarAcceso.mockClear();
   stripeMock.programadas.clear();
   stripeMock.crear.mockReset();
   stripeMock.actualizar.mockReset();
@@ -526,5 +433,51 @@ describe("cancelación de la suscripción", () => {
     const r = await procesarEventoImt(db, cancelacion());
     expect(r).toBe("suscripcion_cancelada");
     expect(correos.cancelacion).not.toHaveBeenCalled();
+  });
+});
+
+describe("portal del cliente al pagar", () => {
+  it("crea el portal con los datos del pedido y envía el enlace de bienvenida", async () => {
+    await procesarEventoImt(crearDb(tablas), completado(), "https://www.masteria.cloud");
+    expect(portalMock.aprovisionar).toHaveBeenCalledOnce();
+    expect(portalMock.aprovisionar.mock.calls[0][1]).toEqual({
+      id: PEDIDO_ID,
+      email: "ana@tienda.co",
+      nombre: "Ana",
+      empresa: "Tienda Demo",
+    });
+    expect(portalMock.enviarAcceso).toHaveBeenCalledOnce();
+    expect(portalMock.enviarAcceso).toHaveBeenCalledWith(
+      expect.objectContaining({ email: "ana@tienda.co", bienvenida: true, base: "https://www.masteria.cloud" }),
+    );
+  });
+
+  it("si la persona ya tenía portal (sin enlace nuevo) no se envía otro correo de acceso", async () => {
+    portalMock.aprovisionar.mockResolvedValue({ clientId: "cli_1", slug: "tienda-demo", acceso: null });
+    await procesarEventoImt(crearDb(tablas), completado());
+    expect(portalMock.aprovisionar).toHaveBeenCalledOnce();
+    expect(portalMock.enviarAcceso).not.toHaveBeenCalled();
+  });
+
+  it("un fallo al crear el portal lanza para que Stripe reintente, y el reintento lo completa", async () => {
+    const db = crearDb(tablas);
+    portalMock.aprovisionar.mockRejectedValueOnce(new Error("supabase auth caído"));
+    await expect(procesarEventoImt(db, completado())).rejects.toThrow(/supabase auth caído/);
+    expect(tablas.imt_pedidos[0].estado).toBe("pagado");
+    expect(portalMock.enviarAcceso).not.toHaveBeenCalled();
+
+    const r = await procesarEventoImt(db, completado());
+    expect(r).toBe("ya_pagado");
+    expect(portalMock.enviarAcceso).toHaveBeenCalledOnce();
+    expect(tablas.imt_comisiones).toHaveLength(1);
+  });
+
+  it("un evento repetido vuelve a llamar al aprovisionamiento (idempotente) pero no a enviar correos de nuevo", async () => {
+    const db = crearDb(tablas);
+    await procesarEventoImt(db, completado("evt_1"));
+    portalMock.aprovisionar.mockResolvedValue({ clientId: "cli_1", slug: "tienda-demo", acceso: null });
+    await procesarEventoImt(db, evento("evt_2", "checkout.session.async_payment_succeeded", { id: "cs_1", metadata: { imt_pedido_id: PEDIDO_ID } }));
+    expect(portalMock.enviarAcceso).toHaveBeenCalledOnce();
+    expect(correos.pago).toHaveBeenCalledOnce();
   });
 });
