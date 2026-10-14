@@ -362,6 +362,43 @@ describe("eventos ajenos", () => {
     expect(tablas.imt_eventos_stripe ?? []).toHaveLength(0);
   });
 
+  it("ignora metadata que no apunta a un pedido real", async () => {
+    const r = await procesarEventoImt(
+      crearDb(tablas),
+      evento("evt_f", "checkout.session.completed", { id: "cs_f", metadata: { imt_pedido_id: "99999999-9999-4999-8999-999999999999" } }),
+    );
+    expect(r).toBe("ignorado:ajeno");
+    expect(tablas.imt_eventos_stripe ?? []).toHaveLength(0);
+    const r2 = await procesarEventoImt(
+      crearDb(tablas),
+      evento("evt_g", "checkout.session.completed", { id: "cs_g", metadata: { imt_pedido_id: "no-es-uuid" } }),
+    );
+    expect(r2).toBe("ignorado:ajeno");
+  });
+
+  it("si la base falla al clasificar, lanza para que Stripe reintente en vez de descartar el evento", async () => {
+    const falla = { message: "db caída" };
+    const cadena = { eq: () => cadena, limit: async () => ({ data: null, error: falla }), maybeSingle: async () => ({ data: null, error: falla }) };
+    const dbRota = { from: () => ({ select: () => cadena }) } as unknown as SupabaseClient;
+    await expect(procesarEventoImt(dbRota, completado())).rejects.toThrow(/No se pudo comprobar/);
+    await expect(
+      procesarEventoImt(dbRota, evento("evt_r", "charge.refunded", { id: "ch_1", refunded: true, payment_intent: "pi_1", amount: 1, created: 1 })),
+    ).rejects.toThrow(/No se pudo comprobar/);
+  });
+
+  it("reconoce un reembolso del plan anual por la metadata del cargo", async () => {
+    const db = crearDb(tablas);
+    sesionesStripe.set("cs_1", sesion({ subscription: null, invoice: null, payment_intent: "pi_1" }));
+    await procesarEventoImt(db, completado());
+    tablas.imt_pedidos[0].stripe_payment_intent_id = null;
+    const r = await procesarEventoImt(
+      db,
+      evento("evt_m", "charge.refunded", { id: "ch_1", refunded: true, payment_intent: "pi_1", metadata: { imt_pedido_id: PEDIDO_ID }, amount: 690_000_000, created: 1 }),
+    );
+    expect(r).toBe("reembolsado");
+    expect(tablas.imt_pedidos[0].estado).toBe("reembolsado");
+  });
+
   it("ignora un reembolso de un cliente que no es de IMT y no lo guarda", async () => {
     const r = await procesarEventoImt(
       crearDb(tablas),

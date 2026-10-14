@@ -189,14 +189,28 @@ const TIPOS_IMT = new Set([
   "charge.refunded",
 ]);
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** La metadata debe ser un UUID que exista de verdad en imt_pedidos; un fallo de lectura se propaga (Stripe reintenta). */
+async function pedidoExiste(db: SupabaseClient, id: string, evento: string): Promise<boolean> {
+  if (!UUID_RE.test(id)) return false;
+  const { data, error } = await db.from("imt_pedidos").select("id").eq("id", id).maybeSingle<{ id: string }>();
+  if (error) throw new Error(`No se pudo comprobar si el evento ${evento} es de IMT: ${error.message}`);
+  return Boolean(data);
+}
+
 /**
- * ¿El evento es de un pedido de IMT? Sesiones, facturas y suscripciones lo dicen
- * en su metadata. Un reembolso no la trae: se reconoce por su payment_intent o cliente.
+ * ¿El evento es de un pedido de IMT? Sesiones, facturas y suscripciones lo dicen en su
+ * metadata, y debe apuntar a un pedido real. Un reembolso se reconoce por la metadata del
+ * cargo (plan anual) o por su payment_intent o cliente (mensual).
+ * Si la base falla, lanza: es mejor un 500 y un reintento que descartar un pago real.
  */
 async function esDeImt(db: SupabaseClient, evento: Stripe.Event): Promise<boolean> {
   if (!TIPOS_IMT.has(evento.type)) return false;
   const obj = evento.data.object;
-  if (evento.type !== "charge.refunded") return pedidoIdDe(obj) !== null;
+  const pedidoId = pedidoIdDe(obj);
+  if (pedidoId && (await pedidoExiste(db, pedidoId, evento.id))) return true;
+  if (evento.type !== "charge.refunded") return false;
 
   const pi = idDe(leer(obj, "payment_intent"));
   const cliente = idDe(leer(obj, "customer"));
@@ -205,7 +219,8 @@ async function esDeImt(db: SupabaseClient, evento: Stripe.Event): Promise<boolea
     ["stripe_customer_id", cliente],
   ] as const) {
     if (!valor) continue;
-    const { data } = await db.from("imt_pedidos").select("id").eq(columna, valor).limit(1);
+    const { data, error } = await db.from("imt_pedidos").select("id").eq(columna, valor).limit(1);
+    if (error) throw new Error(`No se pudo comprobar si el evento ${evento.id} es de IMT: ${error.message}`);
     if (Array.isArray(data) && data.length > 0) return true;
   }
   return false;
@@ -500,7 +515,9 @@ async function reembolso(db: SupabaseClient, cargo: Stripe.Charge): Promise<stri
   const cliente = idDe(cargo.customer);
 
   let pedido: PedidoFila | null = null;
-  if (pi) {
+  const porMetadata = pedidoIdDe(cargo);
+  if (porMetadata && UUID_RE.test(porMetadata)) pedido = await pedidoPorId(db, porMetadata);
+  if (!pedido && pi) {
     const { data } = await db
       .from("imt_pedidos")
       .select(COLUMNAS_PEDIDO)
